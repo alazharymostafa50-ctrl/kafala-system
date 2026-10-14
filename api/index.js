@@ -16,6 +16,16 @@ module.exports = async (req, res) => {
       <h2>النظام غير جاهز بعد</h2><p>${noDb ? 'لم تُربط قاعدة البيانات بالمشروع بعد (DATABASE_URL غير موجود).' : 'تعذر الاتصال بقاعدة البيانات أو تجهيزها. راجع سجلات النشر.'}</p></body></html>`);
   }
   const t = Date.now();
-  res.on('finish', () => { const ms = Date.now() - t; if (ms > 3000 || res.statusCode >= 500) console.log(`[slow/err] ${req.method} ${req.url} → ${res.statusCode} in ${ms}ms`); });
+  res.on('finish', () => {
+    const ms = Date.now() - t;
+    if (ms > 3000 || res.statusCode >= 500) console.log(`[slow/err] ${req.method} ${req.url} → ${res.statusCode} in ${ms}ms`);
+    const p = (req.originalUrl || req.url || '').split('?')[0];
+    if (/^\/(static|favicon|branding)/.test(p) || p === '/health') return;
+    const db = require('../src/db');
+    const sess = req.session ? (req.session.userId ? 'user' : req.session.pending2fa ? 'pending2fa' : 'anon') : 'none';
+    db.query('INSERT INTO request_debug (method, path, status, location, has_cookie, session, ms) VALUES ($1,$2,$3,$4,$5,$6,$7)',
+      [req.method, p.slice(0, 100), res.statusCode, String(res.getHeader('location') || '').slice(0, 100) || null, /kafala\.sid=/.test(req.headers.cookie || ''), sess, ms])
+      .then(() => db.query('DELETE FROM request_debug WHERE id < (SELECT max(id) - 200 FROM request_debug)')).catch(() => {});
+  });
   return app(req, res);
 };

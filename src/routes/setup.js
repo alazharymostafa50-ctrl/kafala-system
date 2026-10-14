@@ -114,7 +114,12 @@ router.get('/health', h(async (req, res) => {
       } catch (e) { trace.push({ error: e.message }); break; }
     }
   }
-  res.set('Cache-Control', 'no-store').json({ trace, ok: dbOk, db: dbOk, db_ms: Date.now() - t, users, setup_key: !!process.env.OWNER_SETUP_KEY,
+  let log = null;
+  if (req.query.log === '1') {
+    log = (await db.many('SELECT to_char(at, \'HH24:MI:SS\') AS t, method, path, status, location, has_cookie, session, ms FROM request_debug ORDER BY id DESC LIMIT 25'))
+      .map((r) => `${r.t} ${r.method} ${r.path} → ${r.status}${r.location ? ' ⇒ ' + r.location : ''} | cookie:${r.has_cookie ? 'yes' : 'no'} ${r.session} ${r.ms}ms`);
+  }
+  res.set('Cache-Control', 'no-store').json({ log, trace, ok: dbOk, db: dbOk, db_ms: Date.now() - t, users, setup_key: !!process.env.OWNER_SETUP_KEY,
     region: process.env.VERCEL_REGION || null, version: (process.env.VERCEL_GIT_COMMIT_SHA || 'local').slice(0, 7), error: err });
 }));
 
