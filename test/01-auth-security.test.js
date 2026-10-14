@@ -151,3 +151,16 @@ test('«تذكرني» يمد الجلسة 30 يومًا، وبدونه تبقى
   const exp2 = new Date(r2.headers['set-cookie'].join(';').match(/Expires=([^;]+)/)[1]);
   assert.ok(exp2 - Date.now() < 3 * 3600 * 1000, 'الجلسة العادية قصيرة');
 });
+
+test('استعادة حساب المدير بمفتاح التفعيل تفك القفل وتغير كلمة المرور', async () => {
+  await db.query(`UPDATE users SET locked_until=now() + interval '1 hour' WHERE username='boss'`);
+  const anon = request.agent(getApp());
+  const page = await anon.get('/recover');
+  const csrf = page.text.match(/name="_csrf" value="([^"]+)"/)[1];
+  await anon.post('/recover').type('form').send({ _csrf: csrf, setup_key: 'bad-key-00000', username: 'boss', password: 'Fresh12345pass', confirm_password: 'Fresh12345pass' });
+  assert.equal((await login('boss', 'Fresh12345pass')).res.headers.location, '/login', 'المفتاح الخاطئ لا يغير شيئًا');
+  const r = await anon.post('/recover').type('form').send({ _csrf: csrf, setup_key: 'setup-key-123456', username: 'BOSS', password: 'Fresh12345pass', confirm_password: 'Fresh12345pass' });
+  assert.equal(r.headers.location, '/login');
+  assert.equal((await login('boss', 'Fresh12345pass')).res.headers.location, '/');
+  assert.ok(await db.one(`SELECT 1 FROM audit_logs WHERE action='admin_recovered'`));
+});

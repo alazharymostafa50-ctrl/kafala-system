@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>استعادة حساب المدير — <%= org.system_name %></title>
+<link rel="icon" href="/static/img/icon-32.png" type="image/png">
+<link rel="stylesheet" href="/static/css/app.css?v=<%= typeof v !== "undefined" ? v : 1 %>">
+</head>
+<body>
+<div class="authpage">
+  <div class="authcard">
+    <img src="<%= org.logo %>" alt="شعار الجمعية">
+    <h1>استعادة حساب المدير</h1>
+    <div class="muted small">لمدير النظام فقط، عند نسيان كلمة المرور أو قفل الحساب. يتطلب مفتاح التفعيل.<br>الموظفون الآخرون يطلبون إعادة التعيين من مدير النظام.</div>
+    <% if (flash) { %><div class="alert <%= flash.type %>" style="margin-top:1rem"><%= flash.msg %></div><% } %>
+    <% if (!configured) { %>
+      <div class="alert warning" style="margin-top:1rem">مفتاح التفعيل غير مضبوط على الخادم.</div>
+    <% } else { %>
+    <form method="post" action="/recover" autocomplete="off">
+      <input type="hidden" name="_csrf" value="<%= csrf %>">
+      <div class="field"><label>مفتاح التفعيل</label><input name="setup_key" type="password" required dir="ltr"></div>
+      <div class="field"><label>اسم المستخدم (حروف إنجليزية)</label><input name="username" required dir="ltr" autocomplete="username"></div>
+      <div class="field"><label>كلمة المرور الجديدة (10 أحرف على الأقل، حروف وأرقام)</label><input name="password" type="password" required minlength="10" dir="ltr" autocomplete="new-password"></div>
+      <div class="field"><label>تأكيد كلمة المرور الجديدة</label><input name="confirm_password" type="password" required dir="ltr" autocomplete="new-password"></div>
+      <label class="check remember"><input type="checkbox" name="reset_2fa" value="1"> إلغاء المصادقة الثنائية أيضًا (إذا فقدت الجوال)</label>
+      <button class="btn" type="submit">تعيين كلمة المرور الجديدة</button>
+    </form>
+    <% } %>
+    <p class="small" style="margin-top:1rem"><a href="/login">العودة لتسجيل الدخول</a></p>
+  </div>
+</div>
+<script src="/static/js/app.js?v=<%= typeof v !== "undefined" ? v : 1 %>"></script>
+</body>
+</html>

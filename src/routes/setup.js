@@ -55,6 +55,39 @@ router.post('/setup', h(async (req, res) => {
   res.redirect('/login');
 }));
 
+/**
+ * استعادة حساب مدير النظام (عند نسيان كلمة المرور أو قفل الحساب).
+ * تتطلب مفتاح التفعيل OWNER_SETUP_KEY، وتعمل فقط لحسابات لها صلاحية إدارة المستخدمين.
+ */
+router.get('/recover', h(async (req, res) => {
+  res.render('auth/recover', { title: 'استعادة حساب المدير', configured: !!process.env.OWNER_SETUP_KEY });
+}));
+
+router.post('/recover', h(async (req, res) => {
+  const back = (msg) => { flash(req, 'error', msg); res.redirect('/recover'); };
+  if (Date.now() - failT > 15 * 60 * 1000) fails = 0;
+  if (fails >= 10) return back('محاولات كثيرة. انتظر 15 دقيقة.');
+  const key = process.env.OWNER_SETUP_KEY;
+  if (!key || key.length < 12) return back('مفتاح التفعيل غير مضبوط على الخادم.');
+  if (!safeEq(String(req.body.setup_key || '').trim(), key)) { fails++; failT = Date.now(); return back('مفتاح التفعيل غير صحيح'); }
+  const username = String(req.body.username || '').trim().toLowerCase();
+  const u = await db.one(`SELECT u.id, u.username FROM users u WHERE lower(u.username)=$1 AND EXISTS (
+    SELECT 1 FROM user_roles ur JOIN role_permissions rp ON rp.role_id=ur.role_id WHERE ur.user_id=u.id AND rp.permission_code='users.manage')`, [username]);
+  if (!u) { fails++; failT = Date.now(); return back('لا يوجد حساب مدير نظام بهذا الاسم. أسماء المستخدمين بحروف إنجليزية صغيرة.'); }
+  try { require('./auth').passwordPolicy(req.body.password); } catch (e) { return back(e.message); }
+  if (req.body.password !== req.body.confirm_password) return back('تأكيد كلمة المرور غير مطابق');
+  const hash = await bcrypt.hash(req.body.password, 12);
+  await db.tx(async (c) => {
+    await c.query(`UPDATE users SET password_hash=$2, is_active=TRUE, failed_attempts=0, locked_until=NULL, must_change_password=FALSE,
+      totp_enabled = CASE WHEN $3 THEN FALSE ELSE totp_enabled END, totp_secret = CASE WHEN $3 THEN NULL ELSE totp_secret END, updated_at=now() WHERE id=$1`,
+    [u.id, hash, req.body.reset_2fa === '1']);
+    await c.query(`DELETE FROM user_sessions WHERE (sess->>'userId')::int = $1`, [u.id]);
+    await audit.log({ ip: req.ip, user: u }, 'admin_recovered', 'user', u.id, { after: { reset_2fa: req.body.reset_2fa === '1' } }, c);
+  });
+  flash(req, 'success', `تم تعيين كلمة مرور جديدة للحساب «${u.username}» وفك أي قفل عليه. سجّل الدخول الآن.`);
+  res.redirect('/login');
+}));
+
 // المهمة المجدولة اليومية (Vercel Cron) — تتطلب CRON_SECRET
 router.get('/cron/engine', h(async (req, res) => {
   const secret = process.env.CRON_SECRET;
