@@ -98,7 +98,23 @@ router.get('/health', h(async (req, res) => {
   const t = Date.now();
   let dbOk = false; let err = null; let users = null;
   try { users = (await db.one('SELECT count(*)::int AS n FROM users')).n; dbOk = true; } catch (e) { err = e.code || e.message.slice(0, 120); }
-  res.set('Cache-Control', 'no-store').json({ ok: dbOk, db: dbOk, db_ms: Date.now() - t, users, setup_key: !!process.env.OWNER_SETUP_KEY,
+  // تتبع مؤقت لسلسلة إعادة التوجيه لمسار عام (للتشخيص فقط)
+  let trace = null;
+  if (typeof req.query.trace === 'string' && /^\/[a-z/-]{0,30}$/.test(req.query.trace)) {
+    trace = [];
+    let url = `https://${req.get('host')}${req.query.trace}`;
+    for (let i = 0; i < 6; i++) {
+      try {
+        const r = await fetch(url, { redirect: 'manual', headers: { 'user-agent': 'kafala-health-trace' } });
+        trace.push({ url: url.replace(/^https:\/\/[^/]+/, ''), status: r.status, location: r.headers.get('location'), server: r.headers.get('server'),
+          vercel: r.headers.get('x-vercel-id'), matched: r.headers.get('x-matched-path'), cache: r.headers.get('x-vercel-cache'), cookie: !!r.headers.get('set-cookie') });
+        const loc = r.headers.get('location');
+        if (!loc) break;
+        url = loc.startsWith('http') ? loc : `https://${req.get('host')}${loc}`;
+      } catch (e) { trace.push({ error: e.message }); break; }
+    }
+  }
+  res.set('Cache-Control', 'no-store').json({ trace, ok: dbOk, db: dbOk, db_ms: Date.now() - t, users, setup_key: !!process.env.OWNER_SETUP_KEY,
     region: process.env.VERCEL_REGION || null, version: (process.env.VERCEL_GIT_COMMIT_SHA || 'local').slice(0, 7), error: err });
 }));
 
