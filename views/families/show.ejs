@@ -16,7 +16,9 @@
 <div class="grid g2">
   <div class="card"><h2>بيانات الأسرة</h2><dl class="dl">
     <dt>العنوان</dt><dd><%= [f.address, f.district, f.city].filter(Boolean).join('، ') || '—' %></dd>
-    <dt>قيمة الكفالة الأساسية</dt><dd><%- money(f.monthly_amount) %> <%= cur %></dd>
+    <dt>طريقة الكفالة</dt><dd><%= L.label('calcMethod', f.calc_method) %></dd>
+    <% if (f.calc_method !== 'per_member') { %><dt>الكفالة الشهرية للأسرة</dt><dd><b><%- money(f.monthly_amount) %></b> <%= cur %></dd><% } %>
+    <dt>الإعانة الشهرية</dt><dd><b><%- money(f.aid_amount) %></b> <%= cur %><%= f.aid_note ? ' — ' + f.aid_note : '' %></dd>
     <dt>عدد الأفراد</dt><dd><%= members.length %> (الأيتام: <%= members.filter(m => m.is_orphan).length %>، المستحقون حاليًا: <%= members.filter(m => ['eligible','eligible_university'].includes(m.eligibility_status)).length %>)</dd>
     <dt>آخر مراجعة</dt><dd><%= f.last_review_on || '—' %></dd>
     <dt>الموظف المسؤول</dt><dd><%= f.responsible_name || '—' %></dd>
@@ -95,10 +97,10 @@
 <% } %>
 
 <% if (ents) { %>
-<div class="card"><h2>سجل الاستحقاق والصرف</h2>
-<div class="tablewrap"><table class="t"><thead><tr><th>الشهر</th><th>المستحقون</th><th class="num">المستحق</th><th class="num">المصروف</th><th class="num">المتبقي</th><th>الحالة</th></tr></thead><tbody>
-<% if (!ents.length) { %><tr><td colspan="6" class="empty">لا توجد كشوف بعد</td></tr><% } %>
-<% ents.forEach(e => { %><tr><td><a href="/entitlements/<%= e.period %>?q=<%= f.file_no %>"><%= U.periodLabel(e.period) %></a></td><td><%= e.eligible_count %></td><td class="num"><%= fmt(e.amount_due) %></td><td class="num"><%= fmt(e.amount_paid) %></td><td class="num"><%= fmt(U.fromCents(U.toCents(e.amount_due)-U.toCents(e.amount_paid))) %></td><td><%- badge('entStatus', e.status) %></td></tr><% }) %>
+<div class="card"><h2>الكفالة والإعانة شهريًا (مع إيصال كل شهر)</h2>
+<div class="tablewrap"><table class="t"><thead><tr><th>الشهر</th><th>المستفيدون</th><th class="num">الكفالة</th><th class="num">الإعانة</th><th class="num">الإجمالي</th><th class="num">المصروف</th><th class="num">المتبقي</th><th>الحالة</th><th></th></tr></thead><tbody>
+<% if (!ents.length) { %><tr><td colspan="9" class="empty">لا توجد كشوف بعد</td></tr><% } %>
+<% ents.forEach(e => { %><tr><td><a href="/entitlements/item/<%= e.id %>"><%= U.periodLabel(e.period) %></a></td><td><%= e.eligible_count %></td><td class="num"><%= fmt(e.kafala_amount) %></td><td class="num"><%= fmt(e.aid_amount) %></td><td class="num"><%= fmt(e.amount_due) %></td><td class="num"><%= fmt(e.amount_paid) %></td><td class="num"><%= fmt(U.fromCents(U.toCents(e.amount_due)-U.toCents(e.amount_paid))) %></td><td><%- badge('entStatus', e.status) %></td><td><% if (can('reports.export')) { %><a class="btn sm sec" href="/entitlements/item/<%= e.id %>/receipt" target="_blank" rel="noopener">إيصال</a><% } %></td></tr><% }) %>
 </tbody></table></div></div>
 <% } %>
 

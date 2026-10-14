@@ -127,4 +127,21 @@ function toCsv(report) {
   return '﻿' + lines.map((l) => l.map((v) => q(safe(v))).join(',')).join('\r\n');
 }
 
-module.exports = { renderHtml, toPdf, toXlsx, toCsv };
+/** تحويل صفحة HTML جاهزة للطباعة إلى PDF (A4) مع أرقام الصفحات */
+async function htmlToPdf(html, { landscape = false, footer = '' } = {}) {
+  const browser = await launchBrowser();
+  try {
+    const page = await browser.newPage();
+    await page.setJavaScriptEnabled(false);
+    await page.setContent(html, { waitUntil: 'load' });
+    await page.evaluateHandle('document.fonts.ready');
+    return await page.pdf({
+      format: 'A4', landscape, printBackground: true, preferCSSPageSize: true, displayHeaderFooter: true, headerTemplate: '<span></span>',
+      footerTemplate: `<div style="width:100%;font-size:8px;color:#666;padding:0 12mm;display:flex;justify-content:space-between;font-family:'DejaVu Sans',sans-serif;direction:rtl">
+        <span>${escapeHtml(footer)}</span><span>صفحة <span class="pageNumber"></span> من <span class="totalPages"></span></span></div>`,
+      margin: { top: '10mm', bottom: '14mm', left: '8mm', right: '8mm' },
+    });
+  } finally { await browser.close(); }
+}
+
+module.exports = { renderHtml, toPdf, toXlsx, toCsv, htmlToPdf, embeddedAssets };

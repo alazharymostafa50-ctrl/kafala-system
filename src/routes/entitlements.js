@@ -108,7 +108,7 @@ router.post('/entitlements/item/:id(\\d+)/status', can('entitlements.generate'),
 
 router.post('/entitlements/item/:id(\\d+)/amend', can('entitlements.generate'), h(async (req, res) => {
   const id = U.intId(req.params.id);
-  await db.tx((c) => ent.amendAmount(c, id, req.body.amount_due, U.str(req.body.reason, { max: 500 }), req.user, req));
+  await db.tx((c) => ent.amendAmount(c, id, { kafala: req.body.kafala_amount, aid: req.body.aid_amount }, U.str(req.body.reason, { max: 500 }), req.user, req));
   flash(req, 'success', 'تم تعديل المبلغ المستحق بقرار موثق');
   res.redirect(`/entitlements/item/${id}`);
 }));
@@ -123,3 +123,91 @@ router.post('/entitlements/:period(\\d{4}-\\d{2})/close', can('entitlements.gene
 }));
 
 module.exports = router;
+
+// ============================================================
+// كشف التوقيع بالاستلام وإيصالات الأسر (للطباعة أو PDF)
+// ============================================================
+const tafqit = require('../lib/tafqit');
+const exporters = require('../lib/exporters');
+
+async function receiptRows({ period, ids = null, onlyUnpaid = false }) {
+  const params = []; const where = ["e.status <> 'cancelled'"];
+  if (period) { params.push(period); where.push(`e.period=$${params.length}`); }
+  if (ids) { params.push(ids); where.push(`e.id = ANY($${params.length})`); }
+  if (onlyUnpaid) where.push('e.amount_paid < e.amount_due');
+  const rows = await db.many(
+    `SELECT e.*, f.file_no, f.family_name, f.aid_note, g.full_name AS guardian_name, g.relation AS guardian_relation,
+       (SELECT max(d.disb_date) FROM disbursements d WHERE d.entitlement_id=e.id AND d.status='paid') AS last_date
+     FROM monthly_entitlements e JOIN families f ON f.id=e.family_id LEFT JOIN guardians g ON g.family_id=f.id
+     WHERE ${where.join(' AND ')} ORDER BY f.file_no`, params);
+  const members = rows.length ? await db.many(
+    `SELECT id, family_id, full_name FROM family_members WHERE family_id = ANY($1) ORDER BY birth_date`, [rows.map((r) => r.family_id)]) : [];
+  for (const r of rows) {
+    const inc = new Set((r.calc_detail.lines || []).filter((l) => l.member_id).map((l) => l.member_id));
+    const excl = new Set((r.calc_detail.excluded || []).map((x) => x.id));
+    r.beneficiaries = members.filter((m) => m.family_id === r.family_id && (inc.size ? inc.has(m.id) : !excl.has(m.id))).map((m) => m.full_name);
+  }
+  return rows;
+}
+
+async function sendPrintable(req, res, view, data, { landscape = false, filename }) {
+  const org = res.locals.org;
+  const [unit, sub] = tafqit.currencyWords(org.currency);
+  const words = (cents) => tafqit.amountWords(cents, unit, sub);
+  const forPdf = req.query.format === 'pdf';
+  const assets = forPdf ? await exporters.embeddedAssets(org) : null;
+  const html = await new Promise((resolve, reject) => res.app.render(view, { ...res.locals, ...data, words, forPdf, assets, landscape }, (e, h) => (e ? reject(e) : resolve(h))));
+  await audit.log(req, forPdf ? 'print_pdf' : 'print', 'receipts', data.period || '', { after: { view, count: data.rows.length } });
+  if (!forPdf) return res.send(html);
+  const pdf = await exporters.htmlToPdf(html, { landscape, footer: `${org.name} — ${data.title}` });
+  res.set('Content-Type', 'application/pdf').set('Content-Disposition', `attachment; filename="${filename}.pdf"`).send(Buffer.from(pdf));
+}
+
+const canPrint = (req) => { if (!req.perms.has('reports.export')) throw new U.UserError('الطباعة تتطلب صلاحية الطباعة والتصدير', 403); };
+
+router.get('/entitlements/:period(\\d{4}-\\d{2})/sheet', can('entitlements.view'), h(async (req, res) => {
+  canPrint(req);
+  const period = req.params.period;
+  const rows = await receiptRows({ period, onlyUnpaid: req.query.only === 'unpaid' });
+  await sendPrintable(req, res, 'entitlements/sheet', { period, rows, title: `كشف التوقيع بالاستلام — ${U.periodLabel(period)}`, onlyUnpaid: req.query.only === 'unpaid' },
+    { landscape: true, filename: `sheet-${period}` });
+}));
+
+router.get('/entitlements/:period(\\d{4}-\\d{2})/receipts', can('entitlements.view'), h(async (req, res) => {
+  canPrint(req);
+  const period = req.params.period;
+  const rows = await receiptRows({ period, onlyUnpaid: req.query.only === 'unpaid' });
+  await sendPrintable(req, res, 'entitlements/receipts', { period, rows, title: `إيصالات استلام — ${U.periodLabel(period)}` }, { filename: `receipts-${period}` });
+}));
+
+router.get('/entitlements/item/:id(\\d+)/receipt', can('entitlements.view'), h(async (req, res) => {
+  canPrint(req);
+  const rows = await receiptRows({ ids: [U.intId(req.params.id)] });
+  if (!rows.length) throw new U.UserError('السجل غير موجود أو ملغى', 404);
+  await sendPrintable(req, res, 'entitlements/receipts', { period: rows[0].period, rows, title: `إيصال استلام ${rows[0].file_no} — ${U.periodLabel(rows[0].period)}` },
+    { filename: `receipt-${rows[0].file_no}-${rows[0].period}` });
+}));
+
+// صرف سريع: «استلم بالكامل» بزر واحد (المتبقي كاملًا، اليوم، بطريقة استلام الأسرة المعتادة)
+router.post('/entitlements/item/:id(\\d+)/quick', can('disbursements.create'), h(async (req, res) => {
+  const id = U.intId(req.params.id);
+  const fin = await settings.get('finance');
+  let period;
+  await db.tx(async (c) => {
+    const e = await c.one(`SELECT e.*, g.payout_method FROM monthly_entitlements e LEFT JOIN guardians g ON g.family_id=e.family_id WHERE e.id=$1`, [id]);
+    if (!e) throw new U.UserError('السجل غير موجود', 404);
+    period = e.period;
+    const pend = await c.one(`SELECT COALESCE(SUM(amount),0)::text AS v FROM disbursements WHERE entitlement_id=$1 AND status='pending_approval'`, [id]);
+    const rem = U.toCents(e.amount_due) - U.toCents(e.amount_paid) - U.toCents(pend.v);
+    if (rem <= 0) throw new U.UserError('هذه الأسرة استلمت مستحقها بالكامل');
+    let fund = 'orphans';
+    if ((await finance.availableCents(c, 'orphans', e.family_id)) < rem && fin.allow_general_fund_for_kafala && (await finance.availableCents(c, 'general')) >= rem) fund = 'general';
+    const method = ['cash', 'bank_transfer', 'wallet', 'cheque', 'other'].includes(e.payout_method) ? e.payout_method : 'cash';
+    await ent.disburse(c, id, { amount: U.fromCents(rem), date: U.todayISO(), method, fund, idempotency_key: U.str(req.body.idempotency_key, { required: true, max: 80, label: 'مفتاح العملية' }), notes: 'صرف سريع: استلم بالكامل' }, req.user, req);
+  }).catch((e) => {
+    if (e.code === '23505' && /idempotency/.test(e.constraint || e.detail || '')) throw new U.UserError('تم تسجيل هذا الصرف مسبقًا (منع التكرار)');
+    throw e;
+  });
+  flash(req, 'success', 'تم تسجيل استلام الأسرة لمستحقها كاملًا');
+  res.redirect(`/entitlements/${period}#e${id}`);
+}));

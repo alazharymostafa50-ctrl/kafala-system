@@ -28,8 +28,13 @@ async function computeFamily(c, fam, payingStatuses) {
       lines.push({ item: `${m.full_name} (${m.member_no})`, member_id: m.id, amount: U.fromCents(U.toCents(m.monthly_amount)) });
     }
   }
+  // الإعانة الشهرية للأسرة تُضاف منفصلة عن الكفالة
+  const kafala = due;
+  const aid = U.toCents(fam.aid_amount || '0');
+  if (aid > 0) lines.push({ item: 'الإعانة الشهرية للأسرة', amount: U.fromCents(aid), kind: 'aid' });
+  due += aid;
   return {
-    due, eligibleCount: eligible.length,
+    due, kafala, aid, eligibleCount: eligible.length,
     detail: { method: fam.calc_method, lines, excluded: members.filter((m) => !payingStatuses.includes(m.eligibility_status)).map((m) => ({ id: m.id, name: m.full_name, status: m.eligibility_status })) },
   };
 }
@@ -51,7 +56,7 @@ async function generate(c, period, user, { mode = 'new', req = null } = {}) {
   if (!run) run = await c.one('INSERT INTO monthly_runs (period, created_by) VALUES ($1,$2) RETURNING *', [period, user.id]);
 
   const fams = await c.many(
-    `SELECT f.id, f.file_no, f.family_name, f.calc_method, f.monthly_amount::text AS monthly_amount FROM families f
+    `SELECT f.id, f.file_no, f.family_name, f.calc_method, f.monthly_amount::text AS monthly_amount, f.aid_amount::text AS aid_amount FROM families f
      WHERE f.status='active' AND f.opened_on <= $2
        AND NOT EXISTS (SELECT 1 FROM monthly_entitlements e WHERE e.family_id=f.id AND e.period=$1)
      ORDER BY f.id`, [period, U.periodEnd(period)]);
@@ -68,9 +73,9 @@ async function generate(c, period, user, { mode = 'new', req = null } = {}) {
       else if (p && p.eligible_count !== r.eligibleCount) { needsReview = true; reason = `تغير عدد المستحقين من ${p.eligible_count} إلى ${r.eligibleCount} والمبلغ ثابت — يحتاج مراجعة`; }
     }
     const e = await c.one(
-      `INSERT INTO monthly_entitlements (run_id, family_id, period, calc_method, eligible_count, amount_due, calc_detail, needs_review, status_reason)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id`,
-      [run.id, f.id, period, f.calc_method, r.eligibleCount, U.fromCents(r.due), JSON.stringify(r.detail), needsReview, reason]);
+      `INSERT INTO monthly_entitlements (run_id, family_id, period, calc_method, eligible_count, amount_due, kafala_amount, aid_amount, calc_detail, needs_review, status_reason)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id`,
+      [run.id, f.id, period, f.calc_method, r.eligibleCount, U.fromCents(r.due), U.fromCents(r.kafala), U.fromCents(r.aid), JSON.stringify(r.detail), needsReview, reason]);
     if (needsReview) {
       result.flagged++;
       await elig.notify(c, { key: `ent-review:${e.id}`, kind: 'entitlement_review', severity: 'warning', family_id: f.id,
@@ -182,19 +187,21 @@ async function setStatus(c, entId, status, reason, user, req) {
   await audit.log(req, 'entitlement_status', 'monthly_entitlement', entId, { before: { status: e.status }, after: { status }, reason }, c);
 }
 
-/** تعديل المبلغ المستحق بقرار موثق (لا يقل عن المصروف) */
-async function amendAmount(c, entId, newAmount, reason, user, req) {
+/** تعديل مبلغي الكفالة والإعانة بقرار موثق (لا يقل الإجمالي عن المصروف) */
+async function amendAmount(c, entId, { kafala, aid }, reason, user, req) {
   if (!reason) throw new U.UserError('سبب التعديل مطلوب');
   const e = await c.one('SELECT * FROM monthly_entitlements WHERE id=$1 FOR UPDATE', [entId]);
   if (!e) throw new U.UserError('السجل غير موجود', 404);
   const run = await c.one('SELECT status FROM monthly_runs WHERE id=$1', [e.run_id]);
   if (run.status === 'closed') throw new U.UserError('كشف الشهر مقفل؛ أي تعديل رجعي يتم عبر تسوية مالية موثقة');
-  const amt = U.amount(newAmount, { allowZero: true });
+  const k = U.amount(kafala ?? e.kafala_amount, { allowZero: true, label: 'مبلغ الكفالة' });
+  const a = U.amount(aid ?? e.aid_amount, { allowZero: true, label: 'مبلغ الإعانة' });
+  const amt = U.fromCents(U.toCents(k) + U.toCents(a));
   if (U.toCents(amt) < U.toCents(e.amount_paid) + (await pendingCents(c, entId))) throw new U.UserError('لا يمكن أن يقل المستحق عن المبلغ المصروف');
-  const detail = { ...e.calc_detail, amendments: [...(e.calc_detail.amendments || []), { from: e.amount_due, to: amt, reason, by: user.username, at: new Date().toISOString() }] };
-  await c.query('UPDATE monthly_entitlements SET amount_due=$2, calc_detail=$3, needs_review=FALSE, updated_at=now() WHERE id=$1', [entId, amt, JSON.stringify(detail)]);
+  const detail = { ...e.calc_detail, amendments: [...(e.calc_detail.amendments || []), { from: e.amount_due, to: amt, kafala: k, aid: a, reason, by: user.username, at: new Date().toISOString() }] };
+  await c.query('UPDATE monthly_entitlements SET amount_due=$2, kafala_amount=$3, aid_amount=$4, calc_detail=$5, needs_review=FALSE, updated_at=now() WHERE id=$1', [entId, amt, k, a, JSON.stringify(detail)]);
   await refreshStatus(c, entId);
-  await audit.log(req, 'entitlement_amended', 'monthly_entitlement', entId, { before: { amount_due: e.amount_due }, after: { amount_due: amt }, reason }, c);
+  await audit.log(req, 'entitlement_amended', 'monthly_entitlement', entId, { before: { kafala: e.kafala_amount, aid: e.aid_amount }, after: { kafala: k, aid: a }, reason }, c);
 }
 
 module.exports = { generate, disburse, approveDisbursement, reverseDisbursement, setStatus, amendAmount, refreshStatus, computeFamily };

@@ -1,0 +1,54 @@
+<%- include('../partials/printhead') %>
+<% const logo = forPdf ? assets.logo : org.logo; %>
+<style>
+.receipt { border: 1.5px solid #054834; border-radius: 10px; padding: 9mm 9mm 7mm; height: 132mm; break-inside: avoid; page-break-inside: avoid; position: relative; display: flex; flex-direction: column; }
+.receipt.pb { page-break-after: always; break-after: page; }
+.cut { border-top: 1px dashed #999; margin: 4mm 0; }
+.rh { display: flex; align-items: center; gap: 10px; border-bottom: 2px solid #b8963e; padding-bottom: 5px; margin-bottom: 6px; }
+.rh img { width: 50px; height: 50px; }
+.rh .o b { color: #054834; font-size: 12pt; display: block; }
+.rh .o span { font-size: 8pt; color: #555; }
+.rh .t { margin-inline-start: auto; text-align: left; }
+.rh .t h2 { margin: 0; font-size: 13pt; color: #054834; }
+.rh .t div { font-size: 8.5pt; color: #555; }
+.info { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 14px; font-size: 10pt; margin: 4px 0 6px; }
+.info b { color: #054834; }
+table.amt { width: 100%; border-collapse: collapse; font-size: 10.5pt; margin: 2px 0 6px; }
+table.amt th, table.amt td { border: 1px solid #b9c4bf; padding: 5px 8px; text-align: center; }
+table.amt th { background: #e6f2ec; color: #054834; }
+table.amt td.tot { font-weight: 700; background: #f6efdc; }
+.words { font-size: 10pt; background: #f6f9f7; border-radius: 6px; padding: 5px 8px; margin-bottom: 6px; }
+.decl { font-size: 10pt; margin: 2px 0 auto; }
+.sigs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; font-size: 9.5pt; margin-top: 8px; }
+.sigs div { border-top: 1px solid #888; padding-top: 4px; min-height: 16mm; }
+.paid { position: absolute; top: 34mm; left: 12mm; border: 2px solid #2f8a57; color: #2f8a57; padding: 2px 10px; border-radius: 6px; font-weight: 700; transform: rotate(-8deg); font-size: 10pt; }
+</style>
+<div class="sheet">
+<% if (!rows.length) { %><p style="text-align:center;color:#888;margin-top:2rem">لا توجد أسر في كشف هذا الشهر</p><% } %>
+<% rows.forEach((r, i) => { const due = U.toCents(r.amount_due), paid = U.toCents(r.amount_paid), rem = due - paid; %>
+  <div class="receipt<%= i % 2 === 1 ? ' pb' : '' %>">
+    <div class="rh">
+      <% if (logo) { %><img src="<%= logo %>" alt=""><% } %>
+      <div class="o"><b><%= org.name %></b><span><%= org.subtitle || '' %></span></div>
+      <div class="t"><h2>إيصال استلام كفالة وإعانة</h2><div>شهر <b><%= U.periodLabel(r.period) %></b> · رقم الإيصال <span class="num"><%= r.file_no %>/<%= r.period %></span></div></div>
+    </div>
+    <% if (rem <= 0) { %><div class="paid">تم الاستلام <%= r.last_date || '' %></div><% } %>
+    <div class="info">
+      <div>رقم الملف: <b class="num"><%= r.file_no %></b></div>
+      <div>الأسرة: <b><%= r.family_name %></b></div>
+      <div>المستلم (ولي الأمر): <b><%= r.guardian_name || '—' %></b><%= r.guardian_relation ? ' (' + r.guardian_relation + ')' : '' %></div>
+      <div>عدد المستفيدين: <b><%= r.eligible_count %></b></div>
+      <div style="grid-column:1/-1">المستفيدون: <%= r.beneficiaries.join('، ') || '—' %></div>
+    </div>
+    <table class="amt"><thead><tr><th>الكفالة</th><th>الإعانة<%= r.aid_note ? ' (' + r.aid_note + ')' : '' %></th><th>الإجمالي</th><% if (paid && rem > 0) { %><th>سبق صرفه</th><th>المتبقي</th><% } %></tr></thead>
+      <tbody><tr><td class="num"><%= fmt(r.kafala_amount) %></td><td class="num"><%= U.toCents(r.aid_amount) ? fmt(r.aid_amount) : '—' %></td><td class="num tot"><%= fmt(r.amount_due) %> <%= org.currency %></td>
+      <% if (paid && rem > 0) { %><td class="num"><%= fmt(r.amount_paid) %></td><td class="num tot"><%= fmt(U.fromCents(rem)) %></td><% } %></tr></tbody></table>
+    <div class="words"><%= words(paid && rem > 0 ? rem : due) %></div>
+    <div class="decl">أقرّ أنا <b><%= r.guardian_name || '..............................' %></b> بأنني استلمت المبلغ الموضح أعلاه من <%= org.name %> عن كفالة وإعانة شهر <%= U.periodLabel(r.period) %>.</div>
+    <div class="sigs"><div>توقيع المستلم</div><div>التاريخ: ....../....../..........</div><div>أمين الصندوق</div></div>
+  </div>
+  <% if (i % 2 === 0 && i < rows.length - 1) { %><div class="cut"></div><% } %>
+<% }) %>
+</div>
+<% if (!forPdf) { %><script src="/static/js/print.js?v=<%= v %>"></script><% } %>
+</body></html>

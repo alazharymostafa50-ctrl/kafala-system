@@ -1,14 +1,34 @@
 <%- include('../partials/head', { title }) %>
-<% const sens = can('families.sensitive'); const v = (k, src) => old(k, (src||{})[k] ?? ''); %>
-<div class="pagehead"><div><div class="crumbs"><a href="/families">الأسر</a> / <%= isNew ? 'جديد' : f.file_no %></div><h1><%= title %></h1></div></div>
-<form method="post" action="<%= isNew ? '/families' : '/families/' + f.id %>">
+<% const sens = can('families.sensitive'); %>
+<div class="pagehead"><div><div class="crumbs"><a href="/families">الأسر</a> / <%= isNew ? 'أسرة جديدة' : f.file_no %></div><h1><%= title %></h1>
+<p>الخانات المعلّمة بـ <span class="req">*</span> فقط مطلوبة. باقي البيانات يمكن إضافتها لاحقًا.</p></div></div>
+<form method="post" action="<%= isNew ? '/families' : '/families/' + f.id %>" class="simpleform">
 <input type="hidden" name="_csrf" value="<%= csrf %>">
-<fieldset><legend>بيانات الأسرة</legend><div class="fields">
-  <div class="field"><label>اسم الأسرة <span class="req">*</span></label><input name="family_name" required maxlength="150" value="<%= old('family_name', f.family_name) %>"></div>
+
+<fieldset><legend><span class="stepno">1</span> الأسرة وولي الأمر</legend><div class="fields">
+  <div class="field"><label>اسم الأسرة <span class="req">*</span></label><input name="family_name" required maxlength="150" placeholder="مثال: أسرة محمد السيد" value="<%= old('family_name', f.family_name) %>"></div>
+  <div class="field"><label>اسم ولي الأمر (رباعي) <span class="req">*</span></label><input name="g_full_name" required value="<%= old('g_full_name', g.full_name) %>"></div>
+  <div class="field"><label>صلته بالأبناء</label><input name="g_relation" placeholder="الأم، الجد، العم..." value="<%= old('g_relation', g.relation) %>"></div>
+  <div class="field"><label>رقم الجوال <span class="req">*</span></label><input type="tel" name="g_phone" required dir="ltr" value="<%= old('g_phone', g.phone) %>"></div>
+  <div class="field"><label>المدينة / القرية</label><input name="city" value="<%= old('city', f.city) %>"></div>
+  <div class="field"><label>العنوان</label><input name="address" value="<%= old('address', f.address) %>"></div>
+</div></fieldset>
+
+<fieldset class="money"><legend><span class="stepno">2</span> الكفالة والإعانة الشهرية</legend><div class="fields">
+  <div class="field wide"><label>طريقة حساب الكفالة <span class="req">*</span></label>
+    <div class="choice">
+      <% L.options('calcMethod').forEach(o => { %><label class="choicebox"><input type="radio" name="calc_method" value="<%= o.value %>" <%= old('calc_method', f.calc_method || 'family_fixed')===o.value?'checked':'' %>> <span><%= o.text %></span></label><% }) %>
+    </div>
+    <div class="hint">«لكل يتيم»: يُكتب مبلغ كل يتيم في بياناته، ويتغير المجموع تلقائيًا عند تغير الاستحقاق.</div></div>
+  <div class="field" data-show-when="calc_method=family_fixed|mixed"><label>مبلغ الكفالة الشهرية (<%= cur %>)</label><input name="monthly_amount" inputmode="decimal" value="<%= old('monthly_amount', f.monthly_amount || '0') %>"></div>
+  <div class="field"><label>مبلغ الإعانة الشهرية (<%= cur %>)</label><input name="aid_amount" inputmode="decimal" value="<%= old('aid_amount', f.aid_amount || '0') %>"><div class="hint">مساعدة شهرية إضافية للأسرة غير الكفالة. اتركها 0 إن لم توجد.</div></div>
+  <div class="field"><label>سبب / نوع الإعانة</label><input name="aid_note" placeholder="مثال: إيجار، علاج، دراسة" value="<%= old('aid_note', f.aid_note) %>"></div>
+</div></fieldset>
+
+<details class="more"><summary>بيانات إضافية (اختيارية)</summary>
+<fieldset><legend>بيانات الملف</legend><div class="fields">
   <div class="field"><label>تاريخ فتح الملف</label><input type="date" name="opened_on" value="<%= old('opened_on', f.opened_on) %>"></div>
-  <div class="field"><label>المدينة</label><input name="city" value="<%= old('city', f.city) %>"></div>
   <div class="field"><label>المنطقة / الحي</label><input name="district" value="<%= old('district', f.district) %>"></div>
-  <div class="field wide"><label>العنوان</label><input name="address" value="<%= old('address', f.address) %>"></div>
   <div class="field"><label>الموظف المسؤول</label><select name="responsible_user_id"><option value="">—</option>
     <% users.forEach(u => { %><option value="<%= u.id %>" <%= String(old('responsible_user_id', f.responsible_user_id))===String(u.id)?'selected':'' %>><%= u.full_name %></option><% }) %></select></div>
   <div class="field"><label>تاريخ آخر مراجعة</label><input type="date" name="last_review_on" value="<%= old('last_review_on', f.last_review_on) %>"></div>
@@ -16,36 +36,21 @@
   <div class="field"><label>حالة الملف</label><select name="status"><option value="active">نشط</option><option value="under_review" <%= old('status')==='under_review'?'selected':'' %>>قيد المراجعة</option></select></div>
   <% } %>
 </div></fieldset>
-
-<fieldset><legend>الكفالة</legend><div class="fields">
-  <div class="field"><label>طريقة احتساب الكفالة <span class="req">*</span></label><select name="calc_method" required>
-    <% L.options('calcMethod').forEach(o => { %><option value="<%= o.value %>" <%= old('calc_method', f.calc_method)===o.value?'selected':'' %>><%= o.text %></option><% }) %></select>
-    <div class="hint">«لكل مستفيد» يعيد الحساب عند تغير الاستحقاق. «ثابت» لا يتغير تلقائيًا ويُنشئ تنبيه مراجعة.</div></div>
-  <div class="field" data-show-when="calc_method=family_fixed|mixed"><label>قيمة الكفالة الشهرية للأسرة (<%= cur %>)</label><input name="monthly_amount" inputmode="decimal" value="<%= old('monthly_amount', f.monthly_amount || '0') %>"></div>
-</div></fieldset>
-
-<fieldset><legend>بيانات ولي الأمر</legend><div class="fields">
-  <div class="field"><label>الاسم الرباعي <span class="req">*</span></label><input name="g_full_name" required value="<%= old('g_full_name', g.full_name) %>"></div>
-  <div class="field"><label>صلة القرابة بالأبناء</label><input name="g_relation" placeholder="الأم، الجد، العم..." value="<%= old('g_relation', g.relation) %>"></div>
-  <div class="field"><label>رقم الجوال الأساسي <span class="req">*</span></label><input type="tel" name="g_phone" required dir="ltr" value="<%= old('g_phone', g.phone) %>"></div>
+<fieldset><legend>بيانات إضافية لولي الأمر</legend><div class="fields">
   <div class="field"><label>رقم جوال بديل</label><input type="tel" name="g_phone_alt" dir="ltr" value="<%= old('g_phone_alt', g.phone_alt) %>"></div>
-  <div class="field"><label>وسيلة استلام الكفالة</label><select name="g_payout_method"><option value="">—</option>
+  <div class="field"><label>طريقة استلام المبلغ</label><select name="g_payout_method"><option value="">—</option>
     <% ['cash','bank_transfer','wallet','cheque','other'].forEach(k => { %><option value="<%= k %>" <%= old('g_payout_method', g.payout_method)===k?'selected':'' %>><%= L.label('payout', k) %></option><% }) %></select></div>
   <% if (sens) { %>
   <div class="field"><label>رقم الهوية / الوثيقة</label><input name="g_national_id" dir="ltr" value="<%= old('g_national_id', g.national_id) %>"></div>
   <div class="field"><label>اسم البنك</label><input name="g_bank_name" value="<%= old('g_bank_name', g.bank_name) %>"></div>
   <div class="field"><label>رقم الحساب / IBAN</label><input name="g_iban" dir="ltr" value="<%= old('g_iban', g.iban) %>"></div>
-  <% } else { %>
-  <div class="field wide"><div class="alert info" style="margin:0">الهوية والبيانات البنكية لا تظهر ولا تُعدَّل إلا لمن لديه صلاحية البيانات الحساسة.</div></div>
   <% } %>
   <div class="field wide"><label>ملاحظات</label><textarea name="g_notes"><%= old('g_notes', g.notes) %></textarea></div>
+  <% if (sens) { %><div class="field wide"><label>ملاحظات إدارية سرية (لا تُطبع)</label><textarea name="confidential_notes"><%= old('confidential_notes', f.confidential_notes) %></textarea></div><% } %>
 </div></fieldset>
+</details>
 
-<% if (sens) { %>
-<fieldset><legend>ملاحظات إدارية سرية</legend><textarea name="confidential_notes"><%= old('confidential_notes', f.confidential_notes) %></textarea>
-<div class="hint small muted">لا تظهر إلا لأصحاب صلاحية البيانات الحساسة ولا تُطبع في التقارير.</div></fieldset>
-<% } %>
-<% if (isNew) { %><label class="check" style="margin-bottom:1rem"><input type="checkbox" name="confirm_duplicate" value="1"> تأكيد أنها أسرة مختلفة إن وُجد ملف بنفس رقم الجوال</label><% } %>
-<div class="formactions"><button class="btn">حفظ</button><a class="btn sec" href="<%= isNew ? '/families' : '/families/' + f.id %>">إلغاء</a></div>
+<% if (isNew) { %><label class="check" style="margin:1rem 0"><input type="checkbox" name="confirm_duplicate" value="1"> تأكيد أنها أسرة مختلفة إذا ظهر تنبيه بوجود نفس رقم الجوال</label><% } %>
+<div class="formactions big"><button class="btn lg"><%- icon('check') %> حفظ الأسرة</button><a class="btn sec lg" href="<%= isNew ? '/families' : '/families/' + f.id %>">إلغاء</a></div>
 </form>
 <%- include('../partials/foot') %>

@@ -28,13 +28,14 @@ async function entitlementTotals(c, period) {
   const r = await c.one(
     `SELECT count(*)::int AS families,
        COALESCE(SUM(amount_due),0)::text AS due, COALESCE(SUM(amount_paid),0)::text AS paid,
+       COALESCE(SUM(kafala_amount),0)::text AS kafala, COALESCE(SUM(aid_amount),0)::text AS aid,
        count(*) FILTER (WHERE status='paid')::int AS full_n,
        count(*) FILTER (WHERE status='partial')::int AS partial_n,
        count(*) FILTER (WHERE amount_paid=0)::int AS none_n,
        COALESCE(SUM(amount_due-amount_paid) FILTER (WHERE status='partial'),0)::text AS partial_remaining
      FROM monthly_entitlements WHERE period=$1 AND status <> 'cancelled'`, [period]);
   const due = U.toCents(r.due); const paid = U.toCents(r.paid);
-  return { families: r.families, due, paid, remaining: due - paid, full: r.full_n, partial: r.partial_n, none: r.none_n,
+  return { families: r.families, due, paid, remaining: due - paid, kafala: U.toCents(r.kafala), aid: U.toCents(r.aid), full: r.full_n, partial: r.partial_n, none: r.none_n,
     partialRemaining: U.toCents(r.partial_remaining), pct: due ? Math.round((paid / due) * 1000) / 10 : 0 };
 }
 
@@ -81,7 +82,11 @@ async function dashboard(period) {
     admin(c), donationBreakdown(c, period), entitlementTotals(c, period), expensesPaid(c, period), unpaidObligations(c, period), finance.periodSummary(c, period),
   ]);
   const available = await finance.fundBalanceCents(c, 'general') + await finance.fundBalanceCents(c, 'orphans');
-  return { adm, don, ent, exp, unpaid, sum, available };
+  const run = await c.one('SELECT status FROM monthly_runs WHERE period=$1', [period]);
+  const pendingDocs = await c.one(`SELECT count(*)::int AS n FROM documents WHERE status='pending'`);
+  const pendingExp = await c.one(`SELECT count(*)::int AS n FROM expenses WHERE status IN ('pending_approval','approved')`);
+  const reviews = await c.one(`SELECT count(*)::int AS n FROM eligibility_reviews WHERE status='open'`);
+  return { adm, don, ent, exp, unpaid, sum, available, run, pendingDocs: pendingDocs.n, pendingExp: pendingExp.n, reviews: reviews.n };
 }
 
 async function chartSeries(endPeriod, n = 12) {

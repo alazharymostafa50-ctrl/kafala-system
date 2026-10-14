@@ -238,3 +238,27 @@ test('الإجماليات متطابقة بين السجل المالي وال�
   const dash = await (await login('admin')).get(`/?period=${P}`);
   assert.match(dash.text, new RegExp(U.fmtMoney(U.fromCents(t.paid)).replace('.', '\\.')));
 });
+
+test('الكفالة والإعانة منفصلتان، وكشف التوقيع والإيصالات والصرف السريع', async () => {
+  const fam = await F.family(mgr, { calc_method: 'family_fixed', monthly_amount: '600', aid_amount: '250', aid_note: 'إيجار' });
+  await F.member(mgr, fam, { full_name: 'يتيم الإيصال' });
+  await mgr.post('/entitlements/generate', { period: P, mode: 'add_missing' });
+  const e = await db.one('SELECT * FROM monthly_entitlements WHERE family_id=$1 AND period=$2', [fam, P]);
+  assert.equal(e.kafala_amount, '600.00'); assert.equal(e.aid_amount, '250.00'); assert.equal(e.amount_due, '850.00');
+  await assert.rejects(db.query('UPDATE monthly_entitlements SET aid_amount=1 WHERE id=$1', [e.id]), /ent_parts_sum/);
+  const sheet = await mgr.get(`/entitlements/${P}/sheet`);
+  assert.equal(sheet.status, 200);
+  assert.match(sheet.text, /كشف التوقيع بالاستلام/); assert.match(sheet.text, /التوقيع بالاستلام/); assert.match(sheet.text, /850\.00/);
+  const rc = await mgr.get(`/entitlements/item/${e.id}/receipt`);
+  assert.match(rc.text, /إيصال استلام كفالة وإعانة/); assert.match(rc.text, /ثمانمائة وخمسون/); assert.match(rc.text, /يتيم الإيصال/); assert.match(rc.text, /إيجار/);
+  const social = await login('social');
+  assert.equal((await social.get(`/entitlements/${P}/sheet`)).status, 403);
+  await cashier.post(`/entitlements/item/${e.id}/quick`, { idempotency_key: 'quick-1' });
+  await cashier.post(`/entitlements/item/${e.id}/quick`, { idempotency_key: 'quick-1' });
+  const after = await db.one('SELECT amount_paid, status FROM monthly_entitlements WHERE id=$1', [e.id]);
+  assert.equal(after.amount_paid, '850.00'); assert.equal(after.status, 'paid');
+  assert.equal((await db.one('SELECT count(*)::int AS n FROM disbursements WHERE entitlement_id=$1', [e.id])).n, 1);
+  await mgr.post(`/entitlements/item/${e.id}/amend`, { kafala_amount: '600', aid_amount: '400', reason: 'زيادة الإعانة' });
+  const am = await db.one('SELECT amount_due, aid_amount, status FROM monthly_entitlements WHERE id=$1', [e.id]);
+  assert.equal(am.amount_due, '1000.00'); assert.equal(am.aid_amount, '400.00'); assert.equal(am.status, 'partial');
+});

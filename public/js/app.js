@@ -81,14 +81,19 @@
     inp.addEventListener('input', upd); upd();
   });
 
-  // إظهار الحقول الشرطية
+  // إظهار الحقول الشرطية (قوائم أو أزرار اختيار)
   document.querySelectorAll('[data-show-when]').forEach(function (el) {
     var parts = el.dataset.showWhen.split('=');
-    var src = document.querySelector('[name="' + parts[0] + '"]');
-    if (!src) return;
+    var srcs = document.querySelectorAll('[name="' + parts[0] + '"]');
+    if (!srcs.length) return;
     var vals = parts[1].split('|');
-    function upd() { el.classList.toggle('hidden', vals.indexOf(src.value) === -1); }
-    src.addEventListener('change', upd); upd();
+    function current() {
+      for (var i = 0; i < srcs.length; i++) { var s = srcs[i]; if (s.type === 'radio') { if (s.checked) return s.value; } else return s.value; }
+      return '';
+    }
+    function upd() { el.classList.toggle('hidden', vals.indexOf(current()) === -1); }
+    srcs.forEach(function (s) { s.addEventListener('change', upd); });
+    upd();
   });
 
   // التوجيه التلقائي عند تغيير القوائم

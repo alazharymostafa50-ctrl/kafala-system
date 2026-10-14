@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title><%= title %></title>
+<% const F = forPdf ? assets.fonts : { ar400: '/static/fonts/cairo-arabic-400-normal.woff2', ar700: '/static/fonts/cairo-arabic-700-normal.woff2', la400: '/static/fonts/cairo-latin-400-normal.woff2', la700: '/static/fonts/cairo-latin-700-normal.woff2' }; %>
+<style>
+@font-face { font-family: 'CairoR'; font-weight: 400; src: url('<%= F.ar400 %>') format('woff2'); unicode-range: U+0600-06FF, U+0750-077F, U+FB50-FDFF, U+FE70-FEFF, U+200C-200E; }
+@font-face { font-family: 'CairoR'; font-weight: 700; src: url('<%= F.ar700 %>') format('woff2'); unicode-range: U+0600-06FF, U+0750-077F, U+FB50-FDFF, U+FE70-FEFF, U+200C-200E; }
+@font-face { font-family: 'CairoR'; font-weight: 400; src: url('<%= F.la400 %>') format('woff2'); unicode-range: U+0000-00FF, U+2000-206F; }
+@font-face { font-family: 'CairoR'; font-weight: 700; src: url('<%= F.la700 %>') format('woff2'); unicode-range: U+0000-00FF, U+2000-206F; }
+@page { size: A4 <%= landscape ? 'landscape' : 'portrait' %>; margin: 10mm 8mm 14mm; }
+<% if (!forPdf) { %>@page { @bottom-center { content: "صفحة " counter(page) " من " counter(pages); font-size: 8pt; color: #666; } }<% } %>
+* { box-sizing: border-box; }
+body { font-family: 'CairoR', Tahoma, sans-serif; color: #1d2a25; margin: 0; background: #fff; font-size: 10.5pt; line-height: 1.5; }
+.sheet { max-width: <%= landscape ? '1120px' : '800px' %>; margin: 0 auto; padding: <%= forPdf ? '0' : '16px' %>; }
+.hdr { display: flex; align-items: center; gap: 12px; border-bottom: 3px solid #b8963e; padding-bottom: 8px; margin-bottom: 10px; }
+.hdr img { width: 62px; height: 62px; }
+.hdr .org b { font-size: 14pt; color: #054834; display: block; }
+.hdr .org span { font-size: 8.5pt; color: #555; }
+.hdr .ttl { margin-inline-start: auto; text-align: left; }
+.hdr .ttl h1 { margin: 0; font-size: 14pt; color: #054834; }
+.hdr .ttl div { font-size: 9pt; color: #555; }
+.num { direction: ltr; unicode-bidi: plaintext; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.bar { position: sticky; top: 0; background: #054834; color: #fff; padding: 8px 14px; display: flex; gap: 8px; align-items: center; justify-content: space-between; font-size: 10.5pt; z-index: 5; }
+.bar a, .bar button { background: #fff; color: #054834; border: 0; border-radius: 6px; padding: 6px 14px; font: inherit; cursor: pointer; text-decoration: none; font-weight: 700; }
+@media print { .bar { display: none; } .sheet { padding: 0; max-width: none; } }
+</style>
+</head>
+<body>
+<% if (!forPdf) { %>
+<div class="bar"><span><%= title %> — <%= rows.length %> أسرة</span>
+<span><button type="button" id="printBtn">طباعة</button> <a href="?format=pdf<%= typeof onlyUnpaid !== 'undefined' && onlyUnpaid ? '&only=unpaid' : '' %>">تنزيل PDF</a> <a href="/entitlements/<%= period %>">رجوع للصرف</a></span></div>
+<% } %>

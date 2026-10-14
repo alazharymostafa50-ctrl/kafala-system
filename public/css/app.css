@@ -16,7 +16,7 @@
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; }
-body { font-family: 'Cairo', 'Segoe UI', Tahoma, sans-serif; background: var(--bg); color: var(--ink); font-size: 15px; line-height: 1.6; }
+body { font-family: 'Cairo', 'Segoe UI', Tahoma, sans-serif; background: var(--bg); color: var(--ink); font-size: 16px; line-height: 1.65; }
 a { color: var(--green-700); text-decoration: none; }
 a:hover { text-decoration: underline; }
 h1, h2, h3, h4 { margin: 0 0 .5rem; line-height: 1.35; color: var(--green-900); }
@@ -35,7 +35,7 @@ h1 { font-size: 1.45rem; } h2 { font-size: 1.15rem; } h3 { font-size: 1rem; }
 .sidebar .brand span { font-size: .75rem; color: rgba(252,250,240,.7); }
 .nav { padding: .6rem .5rem 1.5rem; flex: 1; }
 .nav .grp { font-size: .72rem; color: rgba(252,250,240,.5); padding: .9rem .75rem .25rem; letter-spacing: .02em; }
-.nav a { display: flex; align-items: center; gap: .65rem; color: rgba(252,250,240,.88); padding: .5rem .75rem; border-radius: 8px; font-size: .92rem; }
+.nav a { display: flex; align-items: center; gap: .65rem; color: rgba(252,250,240,.92); padding: .58rem .8rem; border-radius: 8px; font-size: .98rem; }
 .nav a:hover { background: rgba(255,255,255,.08); text-decoration: none; color: #fff; }
 .nav a.on { background: var(--cream); color: var(--green-900); font-weight: 600; }
 .nav a.on svg { color: var(--gold); }
@@ -109,6 +109,38 @@ legend { font-weight: 700; color: var(--green-800); padding: 0 .4rem; font-size:
 .filters { display: flex; flex-wrap: wrap; gap: .6rem; align-items: flex-end; margin-bottom: .9rem; }
 .filters .field { min-width: 150px; }
 .filters .grow { flex: 1; min-width: 220px; }
+
+/* نماذج مبسطة */
+.stepno { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: var(--green-700); color: #fff; font-size: .85rem; margin-inline-end: .35rem; }
+fieldset.money { border-color: var(--gold); background: #fffdf6; }
+.choice { display: flex; flex-wrap: wrap; gap: .5rem; }
+.choicebox { display: flex; align-items: center; gap: .45rem; border: 1px solid #cfd8d4; border-radius: 10px; padding: .55rem .9rem; cursor: pointer; font-weight: 600; background: #fff; margin: 0; }
+.choicebox input { width: auto; accent-color: var(--green-700); }
+.choicebox:has(input:checked) { border-color: var(--green-700); background: var(--green-50); color: var(--green-900); }
+details.more { margin: 0 0 1rem; }
+details.more > summary { cursor: pointer; font-weight: 700; color: var(--green-700); padding: .6rem .9rem; border: 1px dashed var(--green-600); border-radius: 10px; background: #fff; list-style: none; }
+details.more > summary::before { content: '＋ '; }
+details.more[open] > summary::before { content: '－ '; }
+details.more[open] > summary { margin-bottom: .8rem; }
+.btn.lg { padding: .7rem 1.4rem; font-size: 1rem; border-radius: 10px; }
+.btn.lg svg { width: 20px; height: 20px; }
+.formactions.big { margin-top: 1rem; }
+
+/* اختصارات الصفحة الرئيسية */
+.tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: .8rem; margin-bottom: 1.3rem; }
+.tile { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .5rem; text-align: center; background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 1.1rem .8rem; color: var(--green-900); font-weight: 700; font-size: 1rem; box-shadow: var(--shadow); min-height: 118px; }
+.tile:hover { text-decoration: none; border-color: var(--green-600); background: var(--green-50); }
+.tile svg { width: 34px; height: 34px; color: var(--green-700); }
+.tile small { font-weight: 400; color: var(--ink-3); font-size: .78rem; }
+.tile.gold svg { color: var(--gold); }
+.attention { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: .6rem; }
+.attention a { display: flex; justify-content: space-between; align-items: center; background: #fff; border: 1px solid var(--line); border-inline-start: 4px solid var(--warning); border-radius: 10px; padding: .7rem .9rem; color: var(--ink); font-weight: 600; }
+.attention a.ok { border-inline-start-color: var(--success); color: var(--ink-3); font-weight: 400; }
+.attention a b { font-size: 1.25rem; color: var(--warning); }
+.attention a.ok b { color: var(--success); }
+.attention a:hover { text-decoration: none; background: var(--green-50); }
+.bigprogress { height: 16px; background: #e8ecea; border-radius: 99px; overflow: hidden; margin: .4rem 0; }
+.bigprogress > i { display: block; height: 100%; background: linear-gradient(90deg, var(--green-600), var(--success)); }
 
 /* إظهار/إخفاء كلمة المرور */
 .pw-wrap { position: relative; }

@@ -7,7 +7,7 @@ const L = {
     closed: ['مغلق', 'muted'], archived: ['مؤرشف', 'muted'],
   },
   calcMethod: {
-    family_fixed: ['مبلغ ثابت للأسرة', 'info'], per_member: ['مبلغ لكل مستفيد', 'info'], mixed: ['مختلط (أساسي + لكل مستفيد)', 'info'],
+    family_fixed: ['مبلغ ثابت للأسرة كلها', 'info'], per_member: ['مبلغ لكل يتيم', 'info'], mixed: ['مبلغ للأسرة + مبلغ لكل يتيم', 'info'],
   },
   eligibility: {
     eligible: ['مستحق', 'success'], eligible_university: ['مستحق بإثبات جامعي', 'success'],

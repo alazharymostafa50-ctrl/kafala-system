@@ -1,0 +1,39 @@
+<%- include('../partials/printhead') %>
+<% const logo = forPdf ? assets.logo : org.logo; let tk = 0, ta = 0, td = 0, tp = 0; %>
+<style>
+table { width: 100%; border-collapse: collapse; font-size: 9.5pt; }
+thead { display: table-header-group; }
+tfoot { display: table-row-group; }
+tr { break-inside: avoid; page-break-inside: avoid; }
+th { background: #054834; color: #fff; padding: 6px 5px; border: 1px solid #054834; font-weight: 700; }
+td { border: 1px solid #b9c4bf; padding: 4px 6px; height: 13mm; vertical-align: middle; }
+td.sig { width: 42mm; }
+td.dt { width: 24mm; }
+tfoot td { background: #f6efdc; font-weight: 700; height: auto; border-top: 2px solid #b8963e; }
+.signs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; margin-top: 20px; break-inside: avoid; font-size: 9.5pt; }
+.signs div { border-top: 1px solid #999; padding-top: 6px; min-height: 48px; }
+.note { font-size: 8.5pt; color: #555; margin: 6px 0; }
+</style>
+<div class="sheet">
+  <div class="hdr">
+    <% if (logo) { %><img src="<%= logo %>" alt=""><% } %>
+    <div class="org"><b><%= org.name %></b><span><%= org.subtitle || '' %></span></div>
+    <div class="ttl"><h1>كشف التوقيع بالاستلام</h1><div>كفالة وإعانة شهر <b><%= U.periodLabel(period) %></b><%= onlyUnpaid ? ' — الأسر التي لم تستلم' : '' %></div><div>العملة: <%= org.currency %> · تاريخ الطباعة: <span class="num"><%= U.todayISO() %></span></div></div>
+  </div>
+  <table>
+    <thead><tr><th>م</th><th>رقم الملف</th><th>اسم المستلم (ولي الأمر)</th><th>عدد المستفيدين</th><th>الكفالة</th><th>الإعانة</th><th>الإجمالي</th><th>سبق صرفه</th><th>التوقيع بالاستلام</th><th>التاريخ</th></tr></thead>
+    <tbody>
+    <% if (!rows.length) { %><tr><td colspan="10" style="text-align:center;color:#888">لا توجد أسر في كشف هذا الشهر</td></tr><% } %>
+    <% rows.forEach((r, i) => { tk += U.toCents(r.kafala_amount); ta += U.toCents(r.aid_amount); td += U.toCents(r.amount_due); tp += U.toCents(r.amount_paid); %>
+      <tr><td><%= i + 1 %></td><td class="num"><%= r.file_no %></td><td><b><%= r.guardian_name || r.family_name %></b></td><td style="text-align:center"><%= r.eligible_count %></td>
+      <td class="num"><%= fmt(r.kafala_amount) %></td><td class="num"><%= U.toCents(r.aid_amount) ? fmt(r.aid_amount) : '—' %></td><td class="num"><b><%= fmt(r.amount_due) %></b></td>
+      <td class="num"><%= U.toCents(r.amount_paid) ? fmt(r.amount_paid) : '' %></td><td class="sig"></td><td class="dt"></td></tr>
+    <% }) %>
+    </tbody>
+    <tfoot><tr><td colspan="4">الإجمالي — <%= rows.length %> أسرة</td><td class="num"><%= fmt(U.fromCents(tk)) %></td><td class="num"><%= fmt(U.fromCents(ta)) %></td><td class="num"><%= fmt(U.fromCents(td)) %></td><td class="num"><%= fmt(U.fromCents(tp)) %></td><td colspan="2"></td></tr></tfoot>
+  </table>
+  <p class="note">إجمالي المستحق: <%= words(td) %>. يوقّع المستلم أمام اسمه عند استلام المبلغ، ويُسجّل الصرف في النظام بعد ذلك.</p>
+  <div class="signs"><div>أمين الصندوق</div><div>المحاسب</div><div>مسؤول الكفالات</div><div>ختم الجمعية</div></div>
+</div>
+<% if (!forPdf) { %><script src="/static/js/print.js?v=<%= v %>"></script><% } %>
+</body></html>

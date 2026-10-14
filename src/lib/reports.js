@@ -32,7 +32,9 @@ async function financial(period, level) {
       { label: '— منها التبرعات العامة', ...M(don.general), formula: 'تبرعات الصندوق العام' },
       { label: '— منها التبرعات المخصصة (مقيدة)', ...M(don.restricted), formula: 'تبرعات كفالة الأيتام والمخصصة لأسر معينة' },
       { label: 'إجمالي المصروفات المدفوعة', ...M(exp), formula: 'قيود دفع المصروفات − عكسها خلال الشهر' },
-      { label: 'إجمالي مستحقات الكفالات للشهر', ...M(ent.due), formula: `مجموع كشف الاستحقاق (${ent.families} أسرة)، باستثناء الملغى بقرار` },
+      { label: 'إجمالي مستحقات الشهر (كفالة + إعانة)', ...M(ent.due), formula: `مجموع كشف الاستحقاق (${ent.families} أسرة)، باستثناء الملغى بقرار` },
+      { label: '— منها الكفالات', ...M(ent.kafala), formula: 'حسب طريقة احتساب كل أسرة' },
+      { label: '— منها الإعانات', ...M(ent.aid), formula: 'الإعانات الشهرية المسجلة للأسر' },
       { label: 'إجمالي المبالغ المصروفة للأسر (لهذا الشهر)', ...M(ent.paid), formula: 'مجموع المصروف على سجلات استحقاق الشهر' },
       { label: 'المستحقات غير المدفوعة لهذا الشهر', ...M(ent.remaining), formula: 'المستحق − المصروف (التزام وليس صرفًا)' },
       { label: 'المتبقي من عمليات الصرف الجزئي', ...M(ent.partialRemaining), formula: `للأسر التي استلمت جزئيًا (${ent.partial} أسرة)` },
@@ -117,7 +119,7 @@ async function families(period, level) {
   const rows = await db.many(
     `SELECT f.id, f.file_no, f.family_name, f.status, g.full_name AS guardian,
        (SELECT count(*) FROM family_members m WHERE m.family_id=f.id)::int AS members,
-       e.eligible_count, e.amount_due::text AS due, e.amount_paid::text AS paid, e.status AS ent_status,
+       e.eligible_count, e.amount_due::text AS due, e.amount_paid::text AS paid, e.status AS ent_status, e.kafala_amount::text AS kafala, e.aid_amount::text AS aid,
        (SELECT string_agg(sp.full_name, '، ') FROM family_sponsorships fs JOIN sponsors sp ON sp.id=fs.sponsor_id
          WHERE fs.family_id=f.id AND fs.start_date <= $2 AND (fs.end_date IS NULL OR fs.end_date >= $3)) AS sponsors
      FROM families f LEFT JOIN guardians g ON g.family_id=f.id LEFT JOIN monthly_entitlements e ON e.family_id=f.id AND e.period=$1
@@ -130,7 +132,7 @@ async function families(period, level) {
     td += d; tp += p; tm += r.members; te += r.eligible_count || 0;
     byStatus[r.status] = (byStatus[r.status] || 0) + 1;
     return { file: r.file_no, guardian: r.guardian || r.family_name, members: r.members, eligible: r.eligible_count ?? '—', sponsors: r.sponsors || 'لا يوجد',
-      due: d, paid: p, remaining: d - p, status: r.ent_status ? label('entStatus', r.ent_status) : 'غير مدرجة في كشف الشهر (' + label('familyStatus', r.status) + ')' };
+      kafala: U.toCents(r.kafala || 0), aid: U.toCents(r.aid || 0), due: d, paid: p, remaining: d - p, status: r.ent_status ? label('entStatus', r.ent_status) : 'غير مدرجة في كشف الشهر (' + label('familyStatus', r.status) + ')' };
   });
   const sections = [kv('الإجماليات', [
     { label: 'عدد الأسر في التقرير', text: String(out.length) },
@@ -142,9 +144,9 @@ async function families(period, level) {
   if (level === 'detailed') {
     sections.push(table('تفصيل الأسر', [
       { key: 'file', label: 'رقم الملف' }, { key: 'guardian', label: 'ولي الأمر' }, { key: 'members', label: 'الأفراد' }, { key: 'eligible', label: 'المستحقون' },
-      { key: 'sponsors', label: 'الكفلاء' }, { key: 'due', label: 'المستحق', money: true }, { key: 'paid', label: 'المصروف', money: true },
+      { key: 'sponsors', label: 'الكفلاء' }, { key: 'kafala', label: 'الكفالة', money: true }, { key: 'aid', label: 'الإعانة', money: true }, { key: 'due', label: 'المستحق', money: true }, { key: 'paid', label: 'المصروف', money: true },
       { key: 'remaining', label: 'المتبقي', money: true }, { key: 'status', label: 'حالة الصرف' }],
-    out, { file: '', guardian: 'الإجمالي', members: tm, eligible: te, sponsors: '', due: td, paid: tp, remaining: td - tp, status: '' }));
+    out, { file: '', guardian: 'الإجمالي', members: tm, eligible: te, sponsors: '', kafala: out.reduce((a, r) => a + r.kafala, 0), aid: out.reduce((a, r) => a + r.aid, 0), due: td, paid: tp, remaining: td - tp, status: '' }));
   }
   return { sections, summary: { families: out.length, members: tm, eligible: te, due: td, paid: tp } };
 }
@@ -159,7 +161,7 @@ async function disbursements(period, level) {
      WHERE e.period=$1 ORDER BY f.file_no`, [period]);
   const t = await stats.entitlementTotals(db, period);
   const out = rows.map((r) => ({
-    file: r.file_no, name: `${r.family_name} / ${r.guardian || ''}`, due: U.toCents(r.amount_due), paid: U.toCents(r.amount_paid),
+    file: r.file_no, name: `${r.family_name} / ${r.guardian || ''}`, kafala: U.toCents(r.kafala_amount), aid: U.toCents(r.aid_amount), due: U.toCents(r.amount_due), paid: U.toCents(r.amount_paid),
     date: r.last_date || '—', method: (r.methods || '').split(',').filter(Boolean).map((m) => label('payout', m)).join('، ') || '—',
     ref: r.refs || '—', status: label('entStatus', r.status), remaining: U.toCents(r.amount_due) - U.toCents(r.amount_paid),
   }));
@@ -168,16 +170,17 @@ async function disbursements(period, level) {
     { label: 'عدد الأسر المستلمة بالكامل', text: String(t.full) },
     { label: 'عدد الأسر المستلمة جزئيًا', text: String(t.partial) },
     { label: 'عدد الأسر غير المستلمة', text: String(t.none) },
+    { label: 'إجمالي الكفالات', ...M(t.kafala) }, { label: 'إجمالي الإعانات', ...M(t.aid) },
     { label: 'إجمالي المستحق', ...M(t.due) }, { label: 'إجمالي المصروف', ...M(t.paid) }, { label: 'إجمالي المتبقي', ...M(t.remaining) },
     { label: 'نسبة إنجاز الصرف', text: t.pct + '%' },
   ], 'السجلات الملغاة بقرار موثق مستبعدة من الإجماليات.')];
   if (level === 'detailed') {
     const sum = (k) => out.reduce((a, r) => a + r[k], 0);
     sections.push(table('كشف الصرف التفصيلي', [
-      { key: 'file', label: 'رقم الملف' }, { key: 'name', label: 'الأسرة / ولي الأمر' }, { key: 'due', label: 'المستحق', money: true },
+      { key: 'file', label: 'رقم الملف' }, { key: 'name', label: 'الأسرة / ولي الأمر' }, { key: 'kafala', label: 'الكفالة', money: true }, { key: 'aid', label: 'الإعانة', money: true }, { key: 'due', label: 'المستحق', money: true },
       { key: 'paid', label: 'المصروف', money: true }, { key: 'date', label: 'تاريخ الصرف' }, { key: 'method', label: 'طريقة الصرف' },
       { key: 'ref', label: 'مرجع العملية' }, { key: 'status', label: 'حالة الصرف' }, { key: 'remaining', label: 'المتبقي', money: true }],
-    out, { file: '', name: 'الإجمالي (شامل الملغى إن وجد)', due: sum('due'), paid: sum('paid'), date: '', method: '', ref: '', status: '', remaining: sum('remaining') },
+    out, { file: '', name: 'الإجمالي (شامل الملغى إن وجد)', kafala: sum('kafala'), aid: sum('aid'), due: sum('due'), paid: sum('paid'), date: '', method: '', ref: '', status: '', remaining: sum('remaining') },
     'التوقيع بالاستلام: يُرفق كشف التوقيعات أو الإيصالات المؤيدة لكل عملية.'));
   }
   return { sections, summary: { families: t.families, full: t.full, partial: t.partial, none: t.none, due: t.due, paid: t.paid, remaining: t.remaining } };

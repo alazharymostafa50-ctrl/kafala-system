@@ -79,8 +79,8 @@ router.post('/import/:id(\\d+)/commit', can('import.run'), h(async (req, res) =>
       if (r.errors.length) { failed.push({ row: r.row, errors: r.errors }); continue; }
       const v = r.values;
       if (b.import_type === 'families') {
-        const f = await c.one(`INSERT INTO families (family_name, opened_on, status, city, district, address, calc_method, monthly_amount, created_by)
-          VALUES ($1,$2,'under_review',$3,$4,$5,$6,$7,$8) RETURNING id, file_no`, [v.family_name, v.opened_on, v.city, v.district, v.address, v.calc_method, v.monthly_amount, req.user.id]);
+        const f = await c.one(`INSERT INTO families (family_name, opened_on, status, city, district, address, calc_method, monthly_amount, aid_amount, created_by)
+          VALUES ($1,$2,'under_review',$3,$4,$5,$6,$7,$8,$9) RETURNING id, file_no`, [v.family_name, v.opened_on, v.city, v.district, v.address, v.calc_method, v.monthly_amount, v.aid_amount, req.user.id]);
         await c.query('INSERT INTO guardians (family_id, full_name, relation, phone, phone_alt) VALUES ($1,$2,$3,$4,$5)', [f.id, v.guardian_name, v.guardian_relation, v.guardian_phone, v.guardian_phone_alt]);
         imported.push({ row: r.row, ref: f.file_no });
       } else if (b.import_type === 'members') {

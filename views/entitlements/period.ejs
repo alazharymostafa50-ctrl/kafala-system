@@ -2,7 +2,12 @@
 <div class="pagehead"><div><div class="crumbs"><a href="/entitlements">الاستحقاقات</a> / <%= U.periodLabel(period) %></div><h1>متابعة الصرف — <%= U.periodLabel(period) %></h1>
 <p><%= run ? (run.status === 'open' ? 'الكشف مفتوح' : 'الكشف مقفل (يمكن صرف المتبقي فقط)') : 'لم يُنشأ كشف لهذا الشهر بعد' %></p></div>
 <div class="btns noprint">
-  <% if (can('reports.view')) { %><a class="btn gold" href="/reports?period=<%= period %>&type=disbursements"><%- icon('print') %> تقرير الصرف</a><% } %>
+  <% if (run && can('reports.export')) { %>
+  <a class="btn gold" href="/entitlements/<%= period %>/sheet" target="_blank" rel="noopener"><%- icon('print') %> كشف التوقيع بالاستلام</a>
+  <a class="btn gold" href="/entitlements/<%= period %>/receipts" target="_blank" rel="noopener"><%- icon('doc') %> إيصالات كل الأسر</a>
+  <a class="btn sec" href="/entitlements/<%= period %>/sheet?only=unpaid" target="_blank" rel="noopener">كشف من لم يستلم</a>
+  <% } %>
+  <% if (can('reports.view')) { %><a class="btn sec" href="/reports?period=<%= period %>&type=disbursements&go=1"><%- icon('report') %> تقرير الصرف</a><% } %>
   <% if (run && run.status === 'open' && can('entitlements.generate')) { %><form method="post" action="/entitlements/<%= period %>/close" class="inline" data-confirm="إقفال كشف <%= U.periodLabel(period) %>؟ لن يمكن تعديل المستحقات بعد الإقفال."><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn sec">إقفال الكشف</button></form><% } %>
 </div></div>
 <% if (!run) { %><div class="card"><p>لا يوجد كشف. <% if (can('entitlements.generate')) { %><a href="/entitlements">أنشئ كشف الاستحقاقات</a><% } %></p></div><% } else { %>
@@ -35,19 +40,22 @@
   <a class="btn sec" href="?only=review">يحتاج مراجعة</a>
 </form>
 <div class="tablewrap"><table class="t">
-<thead><tr><th>الملف</th><th>الأسرة / ولي الأمر</th><th>المستحقون</th><th class="num">المستحق</th><th class="num">المصروف</th><th class="num">المتبقي</th><th>الحالة</th><th>آخر صرف</th><th>الطريقة / المرجع</th><th class="noprint"></th></tr></thead>
+<thead><tr><th>الملف</th><th>الأسرة / ولي الأمر</th><th class="num">الكفالة</th><th class="num">الإعانة</th><th class="num">الإجمالي</th><th class="num">المتبقي</th><th>الحالة</th><th class="noprint">الإجراء</th></tr></thead>
 <tbody>
-<% if (!rows.length) { %><tr><td colspan="10" class="empty">لا توجد سجلات مطابقة</td></tr><% } %>
+<% if (!rows.length) { %><tr><td colspan="8" class="empty">لا توجد سجلات مطابقة</td></tr><% } %>
 <% rows.forEach(e => { const rem = U.toCents(e.amount_due) - U.toCents(e.amount_paid); %>
 <tr id="e<%= e.id %>">
   <td><a href="/entitlements/item/<%= e.id %>"><b><%= e.file_no %></b></a><%- e.needs_review ? ' <span class="badge warning" title="' + esc(e.status_reason) + '">مراجعة</span>' : '' %></td>
   <td><%= e.family_name %><br><span class="small muted"><%= e.guardian_name %></span></td>
-  <td><%= e.eligible_count %></td><td class="num"><%= fmt(e.amount_due) %></td><td class="num"><%= fmt(e.amount_paid) %></td><td class="num"><b><%= fmt(U.fromCents(rem)) %></b></td>
-  <td><%- badge('entStatus', e.status) %></td><td class="num"><%= e.last_date || '—' %></td>
-  <td class="small"><%= (e.methods || '').split(',').filter(Boolean).map(m => L.label('payout', m)).join('، ') %> <span class="ltr"><%= e.refs || '' %></span></td>
-  <td class="noprint actions">
+  <td class="num"><%= fmt(e.kafala_amount) %></td><td class="num"><%= U.toCents(e.aid_amount) ? fmt(e.aid_amount) : '—' %></td><td class="num"><b><%= fmt(e.amount_due) %></b></td><td class="num"><b style="color:<%= rem > 0 ? 'var(--danger)' : 'var(--success)' %>"><%= fmt(U.fromCents(rem)) %></b></td>
+  <td><%- badge('entStatus', e.status) %><% if (e.last_date) { %><br><span class="small muted"><%= e.last_date %> · <%= (e.methods || '').split(',').filter(Boolean).map(m => L.label('payout', m)).join('، ') %></span><% } %></td>
+  <td class="noprint actions" style="white-space:normal;min-width:190px">
   <% if (can('disbursements.create') && rem > 0 && !['cancelled','postponed','failed','pending_approval'].includes(e.status)) { %>
-    <details><summary class="btn sm">تسجيل الصرف</summary>
+    <form method="post" action="/entitlements/item/<%= e.id %>/quick" class="inline" data-confirm="تأكيد أن <%= esc(e.guardian_name || e.family_name) %> استلم <%= fmt(U.fromCents(rem)) %> <%= cur %> كاملة اليوم؟"><input type="hidden" name="_csrf" value="<%= csrf %>"><input type="hidden" name="idempotency_key" value="<%= newKey() %>"><button class="btn sm"><%- icon('check') %> استلم بالكامل</button></form>
+  <% } %>
+  <% if (can('reports.export')) { %><a class="btn sm sec" href="/entitlements/item/<%= e.id %>/receipt" target="_blank" rel="noopener">إيصال</a><% } %>
+  <% if (can('disbursements.create') && rem > 0 && !['cancelled','postponed','failed','pending_approval'].includes(e.status)) { %>
+    <details style="margin-top:.3rem"><summary class="btn sm sec">صرف جزئي / بتفاصيل</summary>
     <form method="post" action="/entitlements/item/<%= e.id %>/disburse?_csrf=<%= csrf %>" enctype="multipart/form-data" style="min-width:260px;text-align:right;margin-top:.4rem" data-confirm="تسجيل صرف لـ <%= e.file_no %>؟ ستُسجل حركة مالية فعلية.">
       <input type="hidden" name="idempotency_key" value="<%= newKey() %>">
       <label>المبلغ</label><input name="amount" required inputmode="decimal" value="<%= U.fromCents(rem) %>">
@@ -64,7 +72,7 @@
 </tr>
 <% }) %>
 </tbody>
-<tfoot><tr><td colspan="3">الإجمالي (حسب التصفية)</td><td class="num"><%= fmt(U.fromCents(rows.reduce((a, r) => a + U.toCents(r.amount_due), 0))) %></td><td class="num"><%= fmt(U.fromCents(rows.reduce((a, r) => a + U.toCents(r.amount_paid), 0))) %></td><td class="num"><%= fmt(U.fromCents(rows.reduce((a, r) => a + U.toCents(r.amount_due) - U.toCents(r.amount_paid), 0))) %></td><td colspan="4"></td></tr></tfoot>
+<tfoot><tr><td colspan="2">الإجمالي (حسب التصفية)</td><td class="num"><%= fmt(U.fromCents(rows.reduce((a, r) => a + U.toCents(r.kafala_amount), 0))) %></td><td class="num"><%= fmt(U.fromCents(rows.reduce((a, r) => a + U.toCents(r.aid_amount), 0))) %></td><td class="num"><%= fmt(U.fromCents(rows.reduce((a, r) => a + U.toCents(r.amount_due), 0))) %></td><td class="num"><%= fmt(U.fromCents(rows.reduce((a, r) => a + U.toCents(r.amount_due) - U.toCents(r.amount_paid), 0))) %></td><td colspan="2"></td></tr></tfoot>
 </table></div>
 <% } %>
 <%- include('../partials/foot') %>

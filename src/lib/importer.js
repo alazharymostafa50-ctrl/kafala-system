@@ -16,7 +16,8 @@ const FIELDS = {
     { key: 'guardian_relation', label: 'صلة ولي الأمر', aliases: ['صلة القرابة'] },
     { key: 'city', label: 'المدينة' }, { key: 'district', label: 'المنطقة', aliases: ['الحي'] }, { key: 'address', label: 'العنوان' },
     { key: 'calc_method', label: 'طريقة الاحتساب', aliases: ['طريقة احتساب الكفالة'] },
-    { key: 'monthly_amount', label: 'قيمة الكفالة الشهرية', aliases: ['المبلغ الشهري'] },
+    { key: 'monthly_amount', label: 'قيمة الكفالة الشهرية', aliases: ['المبلغ الشهري', 'الكفالة'] },
+    { key: 'aid_amount', label: 'قيمة الإعانة الشهرية', aliases: ['الإعانة', 'الاعانة'] },
     { key: 'opened_on', label: 'تاريخ فتح الملف' },
   ],
   members: [
@@ -123,6 +124,7 @@ function validateRow(type, raw) {
     const cm = get('calc_method'); v.calc_method = cm ? CALC[cm] : 'family_fixed';
     if (!v.calc_method) errors.push('طريقة الاحتساب غير معروفة (ثابت / لكل مستفيد / مختلط)');
     v.monthly_amount = tryF(() => U.amount(get('monthly_amount') || '0', { allowZero: true, label: 'قيمة الكفالة' }), 'المبلغ');
+    v.aid_amount = tryF(() => U.amount(get('aid_amount') || '0', { allowZero: true, label: 'قيمة الإعانة' }), 'الإعانة');
     v.opened_on = dateOf(get('opened_on'), 'تاريخ فتح الملف', false) || U.todayISO();
   } else if (type === 'members') {
     v.family_file_no = get('family_file_no') || null;

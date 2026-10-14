@@ -18,20 +18,20 @@
   </div>
   <nav class="nav">
     <% const nav = (href, ic, text, perm, extra) => { if (perm && !can(perm)) return ''; const on = (href === '/' ? path === '/' : path.startsWith(href)); return `<a href="${href}" class="${on ? 'on' : ''}" title="${text}">${icon(ic)}<span>${text}</span>${extra || ''}</a>`; } %>
-    <%- nav('/', 'home', 'لوحة التحكم', 'dashboard.view') %>
-    <div class="grp">الملفات</div>
-    <%- nav('/families', 'family', 'إدارة الأسر', 'families.view') %>
-    <%- nav('/eligibility', 'shield', 'مراجعة الاستحقاقات', 'eligibility.view') %>
-    <%- nav('/sponsors', 'sponsor', 'إدارة الكفلاء', 'sponsors.view') %>
+    <%- nav('/', 'home', 'الرئيسية', 'dashboard.view') %>
+    <div class="grp">الأسر والكفلاء</div>
+    <%- nav('/families', 'family', 'الأسر والأيتام', 'families.view') %>
+    <%- nav('/eligibility', 'shield', 'مراجعة الاستحقاق', 'eligibility.view') %>
+    <%- nav('/sponsors', 'sponsor', 'الكفلاء', 'sponsors.view') %>
     <div class="grp">المالية</div>
     <%- nav('/donations', 'donation', 'التبرعات', 'donations.view') %>
     <%- nav('/expenses', 'expense', 'المصروفات', 'expenses.view') %>
-    <%- nav('/entitlements', 'calendar', 'الاستحقاقات والصرف الشهري', 'entitlements.view') %>
-    <%- nav('/finance', 'wallet', 'الأرصدة والتسويات', 'finance.view') %>
-    <%- nav('/reports', 'report', 'التقارير الشهرية', 'reports.view') %>
+    <%- nav('/entitlements', 'calendar', 'الصرف الشهري', 'entitlements.view') %>
+    <%- nav('/finance', 'wallet', 'الأرصدة', 'finance.view') %>
+    <%- nav('/reports', 'report', 'التقارير والطباعة', 'reports.view') %>
     <div class="grp">النظام</div>
     <%- nav('/notifications', 'bell', 'التنبيهات', null, notifCount ? `<i class="badge-n">${notifCount}</i>` : '') %>
-    <%- nav('/import', 'import', 'استيراد البيانات', 'import.run') %>
+    <%- nav('/import', 'import', 'استيراد من Excel', 'import.run') %>
     <%- nav('/admin/users', 'users', 'المستخدمون والأدوار', 'users.manage') %>
     <%- nav('/admin/settings', 'settings', 'الإعدادات', 'settings.manage') %>
     <%- nav('/admin/audit', 'log', 'سجل التدقيق', 'audit.view') %>

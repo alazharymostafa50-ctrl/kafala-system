@@ -22,6 +22,8 @@ function parseFamily(b) {
     district: U.str(b.district, { max: 80 }),
     calc_method: U.oneOf(b.calc_method, ['family_fixed', 'per_member', 'mixed'], { label: 'طريقة احتساب الكفالة' }),
     monthly_amount: U.amount(b.monthly_amount || '0', { allowZero: true, label: 'قيمة الكفالة الشهرية' }),
+    aid_amount: U.amount(b.aid_amount || '0', { allowZero: true, label: 'قيمة الإعانة الشهرية' }),
+    aid_note: U.str(b.aid_note, { max: 200, label: 'سبب الإعانة' }),
     last_review_on: U.date(b.last_review_on, { label: 'تاريخ آخر مراجعة' }),
     responsible_user_id: b.responsible_user_id ? U.intId(b.responsible_user_id) : null,
   };
@@ -84,9 +86,9 @@ router.post('/families', can('families.edit'), h(async (req, res) => {
     const dup = await c.one('SELECT f.file_no FROM guardians g JOIN families f ON f.id=g.family_id WHERE g.phone=$1 OR g.phone_alt=$1 LIMIT 1', [g.phone]);
     if (dup && req.body.confirm_duplicate !== '1') throw new U.UserError(`يوجد ملف أسرة مسجل بنفس رقم الجوال (${dup.file_no}). إذا كانت أسرة مختلفة فعلًا، فعّل خيار «تأكيد أنها أسرة مختلفة» وأعد الحفظ.`);
     const row = await c.one(
-      `INSERT INTO families (family_name, opened_on, status, address, city, district, calc_method, monthly_amount, last_review_on, responsible_user_id, confidential_notes, created_by)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING *`,
-      [f.family_name, f.opened_on, status, f.address, f.city, f.district, f.calc_method, f.monthly_amount, f.last_review_on, f.responsible_user_id,
+      `INSERT INTO families (family_name, opened_on, status, address, city, district, calc_method, monthly_amount, aid_amount, aid_note, last_review_on, responsible_user_id, confidential_notes, created_by)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING *`,
+      [f.family_name, f.opened_on, status, f.address, f.city, f.district, f.calc_method, f.monthly_amount, f.aid_amount, f.aid_note, f.last_review_on, f.responsible_user_id,
         sens ? U.str(req.body.confidential_notes, { max: 3000 }) : null, req.user.id]);
     await c.query(
       `INSERT INTO guardians (family_id, full_name, relation, national_id, phone, phone_alt, payout_method, bank_name, iban, notes)
@@ -153,9 +155,9 @@ router.post('/families/:id', can('families.edit'), h(async (req, res) => {
     await c.query(`UPDATE guardians SET ${gkeys.map((k, i) => `${k}=$${i + 2}`).join(', ')}, updated_at=now() WHERE family_id=$1`, [id, ...gkeys.map((k) => g[k])]);
     const d1 = audit.diff(before, fields); const d2 = audit.diff(gb, g);
     if (d1.changed || d2.changed) await audit.log(req, 'update', 'family', id, { before: { ...d1.before, guardian: d2.before }, after: { ...d1.after, guardian: d2.after } }, c);
-    if (before.calc_method !== f.calc_method || before.monthly_amount !== f.monthly_amount) {
+    if (before.calc_method !== f.calc_method || before.monthly_amount !== f.monthly_amount || before.aid_amount !== f.aid_amount) {
       await elig.notify(c, { key: `calc-change:${id}:${Date.now()}`, kind: 'family_amount_review', severity: 'info', family_id: id, link: `/families/${id}`,
-        title: `تغيرت طريقة/قيمة كفالة ${before.file_no}`, body: 'يسري التغيير على الكشوف الجديدة فقط ولا يعدّل الأشهر السابقة.' });
+        title: `تغيرت الكفالة أو الإعانة لملف ${before.file_no}`, body: 'يسري التغيير على الكشوف الجديدة فقط ولا يعدّل الأشهر السابقة.' });
     }
   });
   flash(req, 'success', 'تم حفظ التعديلات');

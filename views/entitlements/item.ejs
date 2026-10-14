@@ -2,8 +2,8 @@
 <% const rem = U.toCents(e.amount_due) - U.toCents(e.amount_paid); %>
 <div class="pagehead"><div><div class="crumbs"><a href="/entitlements/<%= e.period %>"><%= U.periodLabel(e.period) %></a> / <%= e.file_no %></div>
 <h1><%= e.family_name %> — <%= U.periodLabel(e.period) %> <%- badge('entStatus', e.status) %></h1>
-<p>المستحق <b class="num"><%= fmt(e.amount_due) %></b> · المصروف <b class="num"><%= fmt(e.amount_paid) %></b> · المتبقي <b class="num"><%= fmt(U.fromCents(rem)) %></b> <%= cur %></p></div>
-<a class="btn sec" href="/families/<%= e.family_id %>">ملف الأسرة</a></div>
+<p>الكفالة <b class="num"><%= fmt(e.kafala_amount) %></b> + الإعانة <b class="num"><%= fmt(e.aid_amount) %></b> = المستحق <b class="num"><%= fmt(e.amount_due) %></b> · المصروف <b class="num"><%= fmt(e.amount_paid) %></b> · المتبقي <b class="num"><%= fmt(U.fromCents(rem)) %></b> <%= cur %></p></div>
+<div class="btns"><% if (can('reports.export')) { %><a class="btn gold" href="/entitlements/item/<%= e.id %>/receipt" target="_blank" rel="noopener"><%- icon('print') %> إيصال الاستلام</a><% } %><a class="btn sec" href="/families/<%= e.family_id %>">ملف الأسرة</a></div></div>
 <% if (e.needs_review) { %><div class="alert warning"><%= e.status_reason %></div><% } else if (e.status_reason) { %><div class="alert info">سبب الحالة: <%= e.status_reason %></div><% } %>
 <div class="grid g2">
 <div class="card"><h2>طريقة الاحتساب</h2>
@@ -40,9 +40,9 @@
 <div class="formactions"><button class="btn sec">تحديث</button></div></form></div>
 <% } %>
 <% if (can('entitlements.generate')) { %>
-<div class="card"><h2>تعديل المبلغ المستحق</h2><p class="small muted">قرار موثق؛ لا يقل عن المصروف. بعد إقفال الكشف يُستخدم قيد تسوية مالية بدلًا من ذلك.</p>
+<div class="card"><h2>تعديل الكفالة أو الإعانة</h2><p class="small muted">قرار موثق؛ لا يقل عن المصروف. بعد إقفال الكشف يُستخدم قيد تسوية مالية بدلًا من ذلك.</p>
 <form method="post" action="/entitlements/item/<%= e.id %>/amend" data-confirm="تعديل المبلغ المستحق؟ سيُسجل التعديل وسببه."><input type="hidden" name="_csrf" value="<%= csrf %>">
-<div class="fields"><div class="field"><label>المبلغ الجديد</label><input name="amount_due" required inputmode="decimal" value="<%= e.amount_due %>"></div><div class="field"><label>السبب <span class="req">*</span></label><input name="reason" required></div></div>
+<div class="fields"><div class="field"><label>الكفالة</label><input name="kafala_amount" required inputmode="decimal" value="<%= e.kafala_amount %>"></div><div class="field"><label>الإعانة</label><input name="aid_amount" required inputmode="decimal" value="<%= e.aid_amount %>"></div><div class="field"><label>السبب <span class="req">*</span></label><input name="reason" required></div></div>
 <div class="formactions"><button class="btn sec">تعديل</button></div></form></div>
 <% } %>
 </div></div>

@@ -1,52 +1,88 @@
 <%- include('partials/head', { title }) %>
+<% const m = (c) => fmt(U.fromCents(c)); %>
 <div class="pagehead">
-  <div><h1>لوحة التحكم</h1><p>مؤشرات <%= U.periodLabel(period) %> — محسوبة مباشرة من قاعدة البيانات</p></div>
-  <form method="get" class="btns noprint"><label class="muted small" for="period" style="margin:0">الشهر</label>
+  <div><h1>أهلًا <%= user.full_name.split(' ')[0] %> 👋</h1><p>ماذا تريد أن تفعل اليوم؟ — شهر <b><%= U.periodLabel(period) %></b></p></div>
+  <form method="get" class="btns noprint"><label class="muted small" for="period" style="margin:0">تغيير الشهر</label>
     <input type="month" id="period" name="period" value="<%= period %>" style="width:170px"><button class="btn sec">عرض</button></form>
 </div>
 
-<div class="quick">
-  <% if (can('families.edit')) { %><a class="btn" href="/families/new"><%- icon('plus') %> إضافة أسرة</a><% } %>
-  <% if (can('sponsors.edit')) { %><a class="btn sec" href="/sponsors/new"><%- icon('sponsor') %> إضافة كفيل</a><% } %>
-  <% if (can('donations.edit')) { %><a class="btn sec" href="/donations/new"><%- icon('donation') %> تسجيل تبرع</a><% } %>
-  <% if (can('expenses.edit')) { %><a class="btn sec" href="/expenses/new"><%- icon('expense') %> تسجيل مصروف</a><% } %>
-  <% if (can('entitlements.view')) { %><a class="btn sec" href="/entitlements/<%= period %>"><%- icon('calendar') %> متابعة الصرف الشهري</a><% } %>
-  <% if (can('reports.view')) { %><a class="btn gold" href="/reports?period=<%= period %>&type=financial"><%- icon('print') %> طباعة التقرير الشهري</a><% } %>
+<div class="tiles">
+  <% if (can('families.edit')) { %><a class="tile" href="/families/new"><%- icon('plus') %>إضافة أسرة جديدة<small>تسجيل أسرة وولي الأمر</small></a><% } %>
+  <% if (can('families.view')) { %><a class="tile" href="/families"><%- icon('search') %>البحث عن أسرة<small>بالاسم أو رقم الملف أو الجوال</small></a><% } %>
+  <% if (can('entitlements.view')) { %><a class="tile" href="/entitlements/<%= period %>"><%- icon('calendar') %>صرف الشهر<small>تسجيل من استلم ومن لم يستلم</small></a><% } %>
+  <% if (can('entitlements.view') && can('reports.export')) { %><a class="tile gold" href="/entitlements/<%= period %>/sheet" target="_blank" rel="noopener"><%- icon('print') %>كشف التوقيع بالاستلام<small>طباعة كشف الشهر للتوقيع</small></a>
+  <a class="tile gold" href="/entitlements/<%= period %>/receipts" target="_blank" rel="noopener"><%- icon('doc') %>إيصالات الأسر<small>إيصال لكل أسرة بالتوقيع</small></a><% } %>
+  <% if (can('donations.edit')) { %><a class="tile" href="/donations/new"><%- icon('donation') %>تسجيل تبرع<small>تبرع أو مساهمة كفيل</small></a><% } %>
+  <% if (can('expenses.edit')) { %><a class="tile" href="/expenses/new"><%- icon('expense') %>تسجيل مصروف</a><% } %>
+  <% if (can('sponsors.edit')) { %><a class="tile" href="/sponsors/new"><%- icon('sponsor') %>إضافة كفيل</a><% } %>
+  <% if (can('reports.view')) { %><a class="tile" href="/reports?period=<%= period %>&type=financial&go=1"><%- icon('report') %>التقرير الشهري<small>طباعة وتصدير</small></a><% } %>
 </div>
 
-<div class="section-title">المؤشرات الإدارية</div>
+<% if (can('entitlements.view')) { %>
+<div class="card">
+  <div class="cardhead"><h2>صرف شهر <%= U.periodLabel(period) %></h2>
+    <% if (d.run) { %><a class="btn sec" href="/entitlements/<%= period %>">فتح كشف الصرف</a><% } %></div>
+  <% if (!d.run) { %>
+    <p>لم يُنشأ كشف هذا الشهر بعد.</p>
+    <% if (can('entitlements.generate')) { %><form method="post" action="/entitlements/generate" data-confirm="إنشاء كشف <%= U.periodLabel(period) %> لكل الأسر النشطة؟"><input type="hidden" name="_csrf" value="<%= csrf %>"><input type="hidden" name="period" value="<%= period %>"><button class="btn lg"><%- icon('plus') %> إنشاء كشف الشهر</button></form><% } %>
+  <% } else { %>
+    <div class="grid g4" style="margin-bottom:.4rem">
+      <div><div class="muted small">الكفالة</div><b class="num" style="font-size:1.2rem"><%= m(d.ent.kafala) %></b></div>
+      <div><div class="muted small">الإعانة</div><b class="num" style="font-size:1.2rem"><%= m(d.ent.aid) %></b></div>
+      <div><div class="muted small">تم صرفه</div><b class="num" style="font-size:1.2rem;color:var(--success)"><%= m(d.ent.paid) %></b></div>
+      <div><div class="muted small">المتبقي</div><b class="num" style="font-size:1.2rem;color:var(--danger)"><%= m(d.ent.remaining) %></b></div>
+    </div>
+    <div class="bigprogress"><i style="width:<%= d.ent.pct %>%"></i></div>
+    <p class="small" style="margin:0">تم الصرف <b><%= d.ent.pct %>%</b> — استلم بالكامل <b><%= d.ent.full %></b> أسرة · جزئيًا <b><%= d.ent.partial %></b> · لم يستلم <b><%= d.ent.none %></b> من <%= d.ent.families %> أسرة (<%= cur %>)</p>
+  <% } %>
+</div>
+<% } %>
+
+<div class="section-title">تحتاج انتباهك</div>
+<div class="attention" style="margin-bottom:1.2rem">
+  <% const att = [
+    [can('entitlements.view') && d.run, '/entitlements/' + period + '?only=unpaid', 'أسر لم تستلم هذا الشهر', d.ent.none],
+    [can('eligibility.view'), '/eligibility', 'أيتام يحتاجون مراجعة استحقاق', d.adm.members.needs_review],
+    [can('eligibility.view'), '/eligibility?tab=reviews', 'طلبات بانتظار قرار (زواج وغيره)', d.reviews],
+    [can('documents.approve'), '/families', 'مستندات بانتظار الاعتماد', d.pendingDocs],
+    [can('eligibility.view'), '/eligibility?tab=documents', 'مستندات ناقصة أو منتهية', d.adm.docIssues],
+    [can('eligibility.view'), '/eligibility?tab=sponsor', 'أسر بلا كفيل', d.adm.noSponsor],
+    [can('expenses.approve') || can('expenses.pay'), '/expenses?status=pending_approval', 'مصروفات بانتظار الاعتماد أو الدفع', d.pendingExp],
+  ].filter(a => a[0]); %>
+  <% att.forEach(a => { %><a href="<%= a[1] %>" class="<%= a[3] ? '' : 'ok' %>"><span><%= a[2] %></span><b><%= a[3] ? a[3] : '✓' %></b></a><% }) %>
+</div>
+
 <div class="kpis">
-  <a class="kpi" href="/families"><div class="k">إجمالي الأسر المسجلة</div><div class="v"><%= d.adm.families.total %></div></a>
   <a class="kpi ok" href="/families?status=active"><div class="k">الأسر النشطة</div><div class="v"><%= d.adm.families.active %></div></a>
-  <a class="kpi bad" href="/families?status=suspended"><div class="k">الأسر الموقوفة مؤقتًا</div><div class="v"><%= d.adm.families.suspended %></div></a>
-  <a class="kpi warn" href="/families?status=under_review"><div class="k">أسر تحتاج إلى مراجعة</div><div class="v"><%= d.adm.families.review %></div></a>
-  <div class="kpi"><div class="k">إجمالي أفراد الأسر</div><div class="v"><%= d.adm.members.total %></div></div>
-  <div class="kpi ok"><div class="k">الأيتام المستحقون للكفالة</div><div class="v"><%= d.adm.members.eligible_orphans %></div></div>
-  <a class="kpi warn" href="/eligibility"><div class="k">مستفيدون يحتاجون مراجعة استحقاق</div><div class="v"><%= d.adm.members.needs_review %></div></a>
+  <div class="kpi"><div class="k">الأيتام المستحقون</div><div class="v"><%= d.adm.members.eligible_orphans %></div></div>
   <a class="kpi gold" href="/sponsors?status=active"><div class="k">الكفلاء النشطون</div><div class="v"><%= d.adm.activeSponsors %></div></a>
-  <a class="kpi warn" href="/eligibility?tab=sponsor"><div class="k">أسر بلا كفيل نشط</div><div class="v"><%= d.adm.noSponsor %></div></a>
-  <a class="kpi bad" href="/eligibility?tab=documents"><div class="k">مستندات ناقصة أو منتهية</div><div class="v"><%= d.adm.docIssues %></div></a>
+  <% if (showFin) { %><div class="kpi gold"><div class="k">الرصيد المتاح الآن (<%= cur %>)</div><div class="v num"><%= m(d.available) %></div></div><% } %>
 </div>
 
 <% if (showFin) { %>
-<div class="section-title">المؤشرات المالية — <%= U.periodLabel(period) %> <span class="muted small">(<%= cur %>)</span></div>
+<details class="more"><summary>عرض كل المؤشرات والرسم البياني</summary>
+<div class="section-title">المؤشرات الإدارية</div>
 <div class="kpis">
-  <div class="kpi ok"><div class="k">التبرعات المحصلة خلال الشهر</div><div class="v num"><%= fmt(U.fromCents(d.don.total)) %></div></div>
-  <div class="kpi"><div class="k">منها مساهمات الكفلاء</div><div class="v num"><%= fmt(U.fromCents(d.don.sponsor)) %></div></div>
-  <div class="kpi gold"><div class="k">منها تبرعات مخصصة لكفالة الأيتام</div><div class="v num"><%= fmt(U.fromCents(d.don.restricted)) %></div></div>
-  <div class="kpi"><div class="k">المستحق للأسر خلال الشهر</div><div class="v num"><%= fmt(U.fromCents(d.ent.due)) %></div></div>
-  <div class="kpi ok"><div class="k">المصروف فعليًا للأسر</div><div class="v num"><%= fmt(U.fromCents(d.ent.paid)) %></div></div>
-  <div class="kpi bad"><div class="k">لم يُصرف بعد</div><div class="v num"><%= fmt(U.fromCents(d.ent.remaining)) %></div></div>
-  <div class="kpi warn"><div class="k">المصروفات الأخرى المدفوعة</div><div class="v num"><%= fmt(U.fromCents(d.exp)) %></div></div>
-  <div class="kpi gold"><div class="k">الرصيد المتاح وفق السجلات (الآن)</div><div class="v num"><%= fmt(U.fromCents(d.available)) %></div></div>
-  <a class="kpi ok" href="/entitlements/<%= period %>?status=paid"><div class="k">أسر استلمت بالكامل</div><div class="v"><%= d.ent.full %></div></a>
-  <a class="kpi warn" href="/entitlements/<%= period %>?status=partial"><div class="k">أسر استلمت جزئيًا</div><div class="v"><%= d.ent.partial %></div></a>
-  <a class="kpi bad" href="/entitlements/<%= period %>?only=unpaid"><div class="k">أسر لم تستلم</div><div class="v"><%= d.ent.none %></div></a>
+  <a class="kpi" href="/families"><div class="k">إجمالي الأسر المسجلة</div><div class="v"><%= d.adm.families.total %></div></a>
+  <a class="kpi bad" href="/families?status=suspended"><div class="k">الأسر الموقوفة مؤقتًا</div><div class="v"><%= d.adm.families.suspended %></div></a>
+  <a class="kpi warn" href="/families?status=under_review"><div class="k">أسر تحتاج إلى مراجعة</div><div class="v"><%= d.adm.families.review %></div></a>
+  <div class="kpi"><div class="k">إجمالي أفراد الأسر</div><div class="v"><%= d.adm.members.total %></div></div>
+</div>
+<div class="section-title">المؤشرات المالية — <%= U.periodLabel(period) %> (<%= cur %>)</div>
+<div class="kpis">
+  <div class="kpi ok"><div class="k">التبرعات المحصلة خلال الشهر</div><div class="v num"><%= m(d.don.total) %></div></div>
+  <div class="kpi"><div class="k">منها مساهمات الكفلاء</div><div class="v num"><%= m(d.don.sponsor) %></div></div>
+  <div class="kpi gold"><div class="k">منها تبرعات مخصصة لكفالة الأيتام</div><div class="v num"><%= m(d.don.restricted) %></div></div>
+  <div class="kpi"><div class="k">المستحق للأسر خلال الشهر</div><div class="v num"><%= m(d.ent.due) %></div></div>
+  <div class="kpi ok"><div class="k">المصروف فعليًا للأسر</div><div class="v num"><%= m(d.ent.paid) %></div></div>
+  <div class="kpi bad"><div class="k">لم يُصرف بعد</div><div class="v num"><%= m(d.ent.remaining) %></div></div>
+  <div class="kpi warn"><div class="k">المصروفات الأخرى المدفوعة</div><div class="v num"><%= m(d.exp) %></div></div>
 </div>
 <div class="card">
   <div class="cardhead"><h2>التبرعات والمستحقات والصرف — آخر 12 شهرًا</h2></div>
   <div class="chartbox"><canvas id="mainChart" data-chart="<%= JSON.stringify(chart) %>" aria-label="رسم بياني للتبرعات والمصروفات"></canvas></div>
 </div>
-<script src="/static/js/chart.umd.js?v=<%= typeof v !== "undefined" ? v : 1 %>"></script>
+</details>
+<script src="/static/js/chart.umd.js?v=<%= v %>"></script>
 <% } %>
 <%- include('partials/foot') %>
