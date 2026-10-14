@@ -18,5 +18,8 @@
       "path": "/cron/engine",
       "schedule": "0 1 * * *"
     }
+  ],
+  "regions": [
+    "fra1"
   ]
 }
