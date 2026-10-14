@@ -13,7 +13,7 @@ const { h, flash } = require('../middleware');
 const { UserError } = require('../lib/util');
 
 const hasUsers = async () => !!(await db.one('SELECT 1 FROM users LIMIT 1'));
-const safeEq = (a, b) => { const x = Buffer.from(String(a)); const y = Buffer.from(String(b)); return x.length === y.length && crypto.timingSafeEqual(x, y); };
+const safeEq = (a, b) => { const x = Buffer.from(String(a).trim()); const y = Buffer.from(String(b).trim()); return x.length === y.length && crypto.timingSafeEqual(x, y); };
 let fails = 0; let failT = 0;
 
 router.use(h(async (req, res, next) => {
@@ -73,7 +73,12 @@ router.post('/recover', h(async (req, res) => {
   const username = String(req.body.username || '').trim().toLowerCase();
   const u = await db.one(`SELECT u.id, u.username FROM users u WHERE lower(u.username)=$1 AND EXISTS (
     SELECT 1 FROM user_roles ur JOIN role_permissions rp ON rp.role_id=ur.role_id WHERE ur.user_id=u.id AND rp.permission_code='users.manage')`, [username]);
-  if (!u) { fails++; failT = Date.now(); return back('لا يوجد حساب مدير نظام بهذا الاسم. أسماء المستخدمين بحروف إنجليزية صغيرة.'); }
+  if (!u) {
+    // صاحب مفتاح التفعيل هو مالك النظام؛ نعرض له أسماء حسابات المديرين ليختار الصحيح
+    const admins = await db.many(`SELECT DISTINCT u.username FROM users u JOIN user_roles ur ON ur.user_id=u.id JOIN role_permissions rp ON rp.role_id=ur.role_id
+      WHERE rp.permission_code='users.manage' ORDER BY 1`);
+    return back(`لا يوجد حساب مدير نظام بالاسم «${username}». الحسابات الموجودة: ${admins.map((a) => a.username).join('، ') || 'لا يوجد'} — اكتب أحدها كما هو.`);
+  }
   try { require('./auth').passwordPolicy(req.body.password); } catch (e) { return back(e.message); }
   if (req.body.password !== req.body.confirm_password) return back('تأكيد كلمة المرور غير مطابق');
   const hash = await bcrypt.hash(req.body.password, 12);
