@@ -5,10 +5,25 @@ const { Pool, types } = require('pg');
 types.setTypeParser(1082, (v) => v);
 // المبالغ NUMERIC تبقى نصوصًا ونتعامل معها عبر وحدة money
 
+/**
+ * رابط قاعدة البيانات: DATABASE_URL أو أي متغير يضيفه تكامل Neon/Vercel
+ * (حتى لو أُضيفت له بادئة مخصصة مثل STORAGE_DATABASE_URL)، مع تفضيل الاتصال المجمّع.
+ */
+function resolveDbUrl() {
+  const e = process.env;
+  if (e.DATABASE_URL) return e.DATABASE_URL;
+  if (e.POSTGRES_URL) return e.POSTGRES_URL;
+  const cands = Object.keys(e).filter((k) => /^postgres(ql)?:\/\//.test(e[k] || '') && /URL/.test(k));
+  const pick = cands.find((k) => /_DATABASE_URL$/.test(k)) || cands.find((k) => /_POSTGRES_URL$/.test(k))
+    || cands.find((k) => !/UNPOOLED|NON_POOLING|NO_SSL/.test(k)) || cands[0];
+  return pick ? e[pick] : undefined;
+}
+const DB_URL = resolveDbUrl();
+
 // على الاستضافة السحابية (Vercel/Neon) تُستخدم اتصالات قليلة لكل نسخة
 const serverless = !!process.env.VERCEL;
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || process.env.POSTGRES_URL,
+  connectionString: DB_URL,
   max: Number(process.env.DB_POOL_MAX || (serverless ? 3 : 10)),
   idleTimeoutMillis: serverless ? 5000 : 10000,
   connectionTimeoutMillis: 15000,
@@ -50,4 +65,4 @@ async function tx(fn) {
   }
 }
 
-module.exports = { pool, query, one, many, tx };
+module.exports = { pool, query, one, many, tx, DB_URL };

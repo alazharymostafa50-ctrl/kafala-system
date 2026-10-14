@@ -10,7 +10,7 @@ module.exports = async (req, res) => {
     console.error('فشل تجهيز النظام:', e);
     res.statusCode = 503;
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
-    const noDb = !process.env.DATABASE_URL && !process.env.POSTGRES_URL;
+    const noDb = !require('../src/db').DB_URL;
     return res.end(`<!doctype html><html lang="ar" dir="rtl"><meta charset="utf-8"><body style="font-family:sans-serif;padding:2rem">
       <h2>النظام غير جاهز بعد</h2><p>${noDb ? 'لم تُربط قاعدة البيانات بالمشروع بعد (DATABASE_URL غير موجود).' : 'تعذر الاتصال بقاعدة البيانات أو تجهيزها. راجع سجلات النشر.'}</p></body></html>`);
   }
