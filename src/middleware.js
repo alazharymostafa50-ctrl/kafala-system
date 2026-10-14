@@ -4,6 +4,8 @@ const db = require('./db');
 const settings = require('./lib/settings');
 const labels = require('./lib/labels');
 const U = require('./lib/util');
+// رقم إصدار الملفات الثابتة لتحديثها في المتصفح بعد كل نشر
+const ASSET_V = (process.env.VERCEL_GIT_COMMIT_SHA || String(Date.now())).slice(0, 8);
 
 /** تغليف المعالجات غير المتزامنة */
 const h = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
@@ -72,6 +74,7 @@ const locals = h(async (req, res, next) => {
   res.locals.money = (v) => `<span class="num">${U.fmtMoney(v)}</span>`;
   res.locals.reports = require('./lib/reports-meta');
   res.locals.U = U;
+  res.locals.v = ASSET_V;
   res.locals.fmt = U.fmtMoney;
   res.locals.cur = s.org?.currency || '';
   res.locals.path = req.path;

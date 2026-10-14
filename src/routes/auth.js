@@ -62,6 +62,7 @@ router.post('/login', h(async (req, res) => {
   if (u.totp_enabled) {
     await new Promise((r) => req.session.regenerate(r));
     req.session.pending2fa = u.id;
+    req.session.pendingRemember = req.body.remember === '1';
     return res.redirect('/login');
   }
   return completeLogin(req, res, u);
@@ -75,12 +76,16 @@ async function registerFail(u, req) {
   await audit.log({ ip: req.ip, user: { id: u.id, username: u.username } }, lock ? 'login_locked' : 'login_failed', 'user', u.id);
 }
 
+const REMEMBER_DAYS = 30;
 async function completeLogin(req, res, u) {
   const returnTo = req.session.returnTo;
+  const remember = req.session.pending2fa ? !!req.session.pendingRemember : req.body.remember === '1';
   await new Promise((r, j) => req.session.regenerate((e) => (e ? j(e) : r())));
   req.session.userId = u.id;
+  // «تذكرني»: جلسة تبقى 30 يومًا (تتجدد مع الاستخدام)؛ وإلا تنتهي بعد مدة الخمول المعتادة
+  if (remember) { req.session.cookie.maxAge = REMEMBER_DAYS * 24 * 60 * 60 * 1000; req.session.remember = true; }
   await db.query('UPDATE users SET failed_attempts=0, locked_until=NULL, last_login_at=now() WHERE id=$1', [u.id]);
-  await audit.log({ ip: req.ip, user: u }, 'login', 'user', u.id);
+  await audit.log({ ip: req.ip, user: u }, 'login', 'user', u.id, { after: { remember } });
   res.redirect(returnTo && returnTo.startsWith('/') && !returnTo.startsWith('//') ? returnTo : '/');
 }
 

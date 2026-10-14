@@ -4,7 +4,7 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>تسجيل الدخول — <%= org.system_name %></title>
 <link rel="icon" href="/static/img/icon-32.png" type="image/png">
-<link rel="stylesheet" href="/static/css/app.css">
+<link rel="stylesheet" href="/static/css/app.css?v=<%= typeof v !== "undefined" ? v : 1 %>">
 </head>
 <body>
 <div class="authpage">
@@ -24,12 +24,14 @@
           <input id="username" name="username" type="text" autocomplete="username" required autofocus dir="ltr"></div>
         <div class="field"><label for="password">كلمة المرور</label>
           <input id="password" name="password" type="password" autocomplete="current-password" required dir="ltr"></div>
+        <label class="check remember"><input type="checkbox" name="remember" value="1" checked> تذكرني على هذا الجهاز لمدة 30 يومًا</label>
+        <p class="muted small" style="margin:-.4rem 0 .8rem">لا تفعّلها على جهاز مشترك أو عام.</p>
         <button class="btn" type="submit">دخول</button>
       <% } %>
     </form>
     <p class="muted small" style="margin-top:1.2rem">نظام داخلي مخصص لموظفي الجمعية. جميع العمليات مسجلة.</p>
   </div>
 </div>
-<script src="/static/js/app.js"></script>
+<script src="/static/js/app.js?v=<%= typeof v !== "undefined" ? v : 1 %>"></script>
 </body>
 </html>

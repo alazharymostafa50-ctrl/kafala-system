@@ -110,6 +110,15 @@ legend { font-weight: 700; color: var(--green-800); padding: 0 .4rem; font-size:
 .filters .field { min-width: 150px; }
 .filters .grow { flex: 1; min-width: 220px; }
 
+/* إظهار/إخفاء كلمة المرور */
+.pw-wrap { position: relative; }
+.pw-wrap input { padding-left: 5.6rem !important; }
+.pw-toggle { position: absolute; left: .35rem; top: 50%; transform: translateY(-50%); display: inline-flex; align-items: center; gap: .3rem;
+  background: var(--green-50); border: 1px solid var(--line); border-radius: 6px; padding: .2rem .5rem; font: inherit; font-size: .8rem; color: var(--green-800); cursor: pointer; }
+.pw-toggle:hover { background: var(--green-100); }
+.pw-toggle svg { width: 16px; height: 16px; }
+.authcard .remember { margin: .2rem 0 .8rem; font-size: .88rem; }
+
 /* ---------- الجداول ---------- */
 .tablewrap { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); background: #fff; }
 table.t { width: 100%; border-collapse: collapse; font-size: .88rem; }

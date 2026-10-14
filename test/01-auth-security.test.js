@@ -135,3 +135,19 @@ test('التفعيل الأول: يتطلب مفتاح التفعيل ويتعط
   const c = await login('boss', 'Boss12345pass');
   assert.equal(c.res.headers.location, '/');
 });
+
+test('«تذكرني» يمد الجلسة 30 يومًا، وبدونه تبقى الجلسة قصيرة', async () => {
+  const anon = request.agent(getApp());
+  const page = await anon.get('/login');
+  const csrf = page.text.match(/name="_csrf" value="([^"]+)"/)[1];
+  assert.match(page.text, /name="remember"/);
+  const r = await anon.post('/login').type('form').send({ _csrf: csrf, username: 'boss', password: 'Boss12345pass', remember: '1' });
+  const exp = new Date(r.headers['set-cookie'].join(';').match(/Expires=([^;]+)/)[1]);
+  assert.ok(exp - Date.now() > 29 * 24 * 3600 * 1000, 'مدة الجلسة 30 يومًا');
+  const anon2 = request.agent(getApp());
+  const p2 = await anon2.get('/login');
+  const c2 = p2.text.match(/name="_csrf" value="([^"]+)"/)[1];
+  const r2 = await anon2.post('/login').type('form').send({ _csrf: c2, username: 'boss', password: 'Boss12345pass' });
+  const exp2 = new Date(r2.headers['set-cookie'].join(';').match(/Expires=([^;]+)/)[1]);
+  assert.ok(exp2 - Date.now() < 3 * 3600 * 1000, 'الجلسة العادية قصيرة');
+});
