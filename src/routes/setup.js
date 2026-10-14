@@ -88,6 +88,15 @@ router.post('/recover', h(async (req, res) => {
   res.redirect('/login');
 }));
 
+// فحص الحالة: يوضح هل الخادم وقاعدة البيانات يعملان (بدون أي بيانات حساسة)
+router.get('/health', h(async (req, res) => {
+  const t = Date.now();
+  let dbOk = false; let err = null; let users = null;
+  try { users = (await db.one('SELECT count(*)::int AS n FROM users')).n; dbOk = true; } catch (e) { err = e.code || e.message.slice(0, 120); }
+  res.set('Cache-Control', 'no-store').json({ ok: dbOk, db: dbOk, db_ms: Date.now() - t, users, setup_key: !!process.env.OWNER_SETUP_KEY,
+    region: process.env.VERCEL_REGION || null, version: (process.env.VERCEL_GIT_COMMIT_SHA || 'local').slice(0, 7), error: err });
+}));
+
 // المهمة المجدولة اليومية (Vercel Cron) — تتطلب CRON_SECRET
 router.get('/cron/engine', h(async (req, res) => {
   const secret = process.env.CRON_SECRET;

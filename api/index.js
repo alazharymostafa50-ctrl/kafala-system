@@ -3,6 +3,7 @@
 const { bootApp } = require('../src/app');
 
 let appPromise = null;
+process.on('unhandledRejection', (e) => console.error('unhandledRejection:', e));
 module.exports = async (req, res) => {
   if (!appPromise) appPromise = bootApp().catch((e) => { appPromise = null; throw e; });
   let app;
@@ -14,5 +15,7 @@ module.exports = async (req, res) => {
     return res.end(`<!doctype html><html lang="ar" dir="rtl"><meta charset="utf-8"><body style="font-family:sans-serif;padding:2rem">
       <h2>النظام غير جاهز بعد</h2><p>${noDb ? 'لم تُربط قاعدة البيانات بالمشروع بعد (DATABASE_URL غير موجود).' : 'تعذر الاتصال بقاعدة البيانات أو تجهيزها. راجع سجلات النشر.'}</p></body></html>`);
   }
+  const t = Date.now();
+  res.on('finish', () => { const ms = Date.now() - t; if (ms > 3000 || res.statusCode >= 500) console.log(`[slow/err] ${req.method} ${req.url} → ${res.statusCode} in ${ms}ms`); });
   return app(req, res);
 };
