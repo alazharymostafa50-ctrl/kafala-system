@@ -15,6 +15,15 @@ module.exports = async (req, res) => {
     return res.end(`<!doctype html><html lang="ar" dir="rtl"><meta charset="utf-8"><body style="font-family:sans-serif;padding:2rem">
       <h2>النظام غير جاهز بعد</h2><p>${noDb ? 'لم تُربط قاعدة البيانات بالمشروع بعد (DATABASE_URL غير موجود).' : 'تعذر الاتصال بقاعدة البيانات أو تجهيزها. راجع سجلات النشر.'}</p></body></html>`);
   }
+  // Vercel يضيف دوال مساعدة خاصة به على الطلب والاستجابة (مثل res.redirect بالرمز 307)،
+  // وهي تحجب دوال Express؛ فتحويل 307 يعيد إرسال النموذج نفسه ويسبب حلقة تحويل لا نهائية.
+  // نزيلها ليعمل Express بسلوكه المعتاد (302 بعد إرسال النماذج).
+  for (const k of ['redirect', 'status', 'send', 'json']) {
+    if (Object.prototype.hasOwnProperty.call(res, k)) { try { delete res[k]; } catch (_) { /* تجاهل */ } }
+  }
+  for (const k of ['query', 'cookies', 'body']) {
+    if (Object.prototype.hasOwnProperty.call(req, k)) { try { delete req[k]; } catch (_) { /* تجاهل */ } }
+  }
   const t = Date.now();
   res.on('finish', () => {
     const ms = Date.now() - t;
