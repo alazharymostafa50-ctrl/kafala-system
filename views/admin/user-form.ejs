@@ -1,0 +1,24 @@
+<%- include('../partials/head', { title }) %>
+<div class="pagehead"><div><div class="crumbs"><a href="/admin/users">المستخدمون</a> / <%= isNew ? 'جديد' : u.username %></div><h1><%= title %></h1></div></div>
+<form method="post" action="<%= isNew ? '/admin/users' : '/admin/users/' + u.id %>"><input type="hidden" name="_csrf" value="<%= csrf %>">
+<fieldset><legend>بيانات الحساب</legend><div class="fields">
+  <div class="field"><label>اسم المستخدم <span class="req">*</span></label><% if (isNew) { %><input name="username" required pattern="[A-Za-z0-9_.\-]{3,40}" dir="ltr" value="<%= old('username') %>"><% } else { %><input value="<%= u.username %>" disabled dir="ltr"><% } %></div>
+  <div class="field"><label>الاسم الكامل <span class="req">*</span></label><input name="full_name" required value="<%= old('full_name', u.full_name) %>"></div>
+  <div class="field"><label>الجوال</label><input type="tel" name="phone" dir="ltr" value="<%= old('phone', u.phone) %>"></div>
+  <% if (isNew) { %><div class="field"><label>كلمة مرور أولية (اختياري)</label><input type="password" name="password" autocomplete="new-password" dir="ltr"><div class="hint">اتركها فارغة لتوليد كلمة مؤقتة قوية. سيُطلب تغييرها عند أول دخول.</div></div><% } else { %>
+  <div class="field"><label class="check"><input type="checkbox" name="is_active" value="1" <%= u.is_active ? 'checked' : '' %>> الحساب نشط</label></div><% } %>
+  <% if (isNew) { %><input type="hidden" name="is_active" value="1"><% } %>
+</div></fieldset>
+<fieldset><legend>الأدوار</legend><div class="fields">
+<% roles.forEach(r => { %><label class="check"><input type="checkbox" name="roles" value="<%= r.id %>" <%= mine.includes(r.id) ? 'checked' : '' %>> <span><b><%= r.name %></b><br><span class="small muted"><%= r.description %></span></span></label><% }) %>
+</div></fieldset>
+<% if (!isNew) { %>
+<fieldset><legend>إجراءات أمنية</legend><div class="fields">
+  <label class="check"><input type="checkbox" name="reset_password" value="1"> إعادة تعيين كلمة المرور (توليد كلمة مؤقتة وإنهاء الجلسات)</label>
+  <label class="check"><input type="checkbox" name="unlock" value="1"> فك القفل المؤقت (<%= u.failed_attempts %> محاولات فاشلة)</label>
+  <% if (u.totp_enabled) { %><label class="check"><input type="checkbox" name="reset_2fa" value="1"> إلغاء المصادقة الثنائية (عند فقدان الجوال)</label><% } %>
+</div></fieldset>
+<% } %>
+<div class="formactions"><button class="btn">حفظ</button><a class="btn sec" href="/admin/users">رجوع</a></div>
+</form>
+<%- include('../partials/foot') %>

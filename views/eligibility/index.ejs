@@ -1,0 +1,71 @@
+<%- include('../partials/head', { title }) %>
+<div class="pagehead"><div><h1>مراجعة الاستحقاقات</h1><p>سن مراجعة الذكور: <b><%= d.age %></b> عامًا (قابل للتعديل من الإعدادات). اليوم: <%= d.today %></p></div>
+<form method="post" action="/eligibility/run"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn sec">تحديث الاستحقاقات والتنبيهات الآن</button></form></div>
+<% const tabs = [['age','بلوغ السن', d.soon3.length + d.soon1.length + d.reached.length], ['proofs','الإثباتات الجامعية', d.proofs.length], ['reviews','قرارات مطلوبة', d.reviews.length + d.pendingDecision.length], ['documents','المستندات', d.missing.length + d.expiredDocs.length], ['sponsor','أسر تحتاج كفيلًا', d.noSponsor.length]]; %>
+<div class="tabs"><% tabs.forEach(([k, t, n]) => { %><a href="?tab=<%= k %>" class="<%= tab===k?'on':'' %>"><%= t %> <span class="badge <%= n ? 'warning' : 'muted' %>"><%= n %></span></a><% }) %></div>
+
+<% const memberRow = (m, extra) => `<tr><td><a href="/families/${m.family_id}#m${m.id}">${esc(m.file_no)}</a></td><td>${esc(m.full_name)}</td><td class="num">${m.birth_date}</td><td>${m.age ?? ''}</td>${extra || ''}<td>${badge('eligibility', m.eligibility_status)}</td></tr>`; %>
+
+<% if (tab === 'age') { %>
+  <div class="card"><h2>بلغوا السن ويحتاجون إلى مراجعة <span class="badge danger"><%= d.reached.length %></span></h2>
+  <div class="tablewrap"><table class="t"><thead><tr><th>الملف</th><th>الاسم</th><th>الميلاد</th><th>العمر</th><th>تاريخ البلوغ</th><th>الحالة</th></tr></thead><tbody>
+  <% if (!d.reached.length) { %><tr><td colspan="6" class="empty">لا يوجد</td></tr><% } %>
+  <% d.reached.forEach(m => { %><%- memberRow(m, `<td class="num">${m.review_date}</td>`) %><% }) %></tbody></table></div></div>
+  <div class="card"><h2>سيبلغون <%= d.age %> عامًا خلال شهر <span class="badge warning"><%= d.soon1.length %></span></h2>
+  <div class="tablewrap"><table class="t"><thead><tr><th>الملف</th><th>الاسم</th><th>الميلاد</th><th>العمر</th><th>تاريخ البلوغ</th><th>الحالة</th></tr></thead><tbody>
+  <% if (!d.soon1.length) { %><tr><td colspan="6" class="empty">لا يوجد</td></tr><% } %>
+  <% d.soon1.forEach(m => { %><%- memberRow(m, `<td class="num">${m.review_date}</td>`) %><% }) %></tbody></table></div></div>
+  <div class="card"><h2>سيبلغون <%= d.age %> عامًا خلال ثلاثة أشهر <span class="badge info"><%= d.soon3.length %></span></h2>
+  <div class="tablewrap"><table class="t"><thead><tr><th>الملف</th><th>الاسم</th><th>الميلاد</th><th>العمر</th><th>تاريخ البلوغ</th><th>الحالة</th></tr></thead><tbody>
+  <% if (!d.soon3.length) { %><tr><td colspan="6" class="empty">لا يوجد</td></tr><% } %>
+  <% d.soon3.forEach(m => { %><%- memberRow(m, `<td class="num">${m.review_date}</td>`) %><% }) %></tbody></table></div></div>
+<% } %>
+
+<% if (tab === 'proofs') { %>
+  <div class="card"><h2>إثباتات جامعية منتهية أو تقترب من الانتهاء</h2>
+  <div class="tablewrap"><table class="t"><thead><tr><th>الملف</th><th>المستفيد</th><th>ينتهي في</th><th>الحالة</th><th></th></tr></thead><tbody>
+  <% if (!d.proofs.length) { %><tr><td colspan="5" class="empty">لا يوجد</td></tr><% } %>
+  <% d.proofs.forEach(p => { %><tr><td><%= p.file_no %></td><td><%= p.full_name %></td><td class="num"><%= p.expiry_date %> <%- p.expiry_date < d.today ? '<span class="badge danger">منتهي</span>' : '' %></td><td><%- badge('eligibility', p.eligibility_status) %></td><td><a class="btn sm sec" href="/families/<%= p.family_id %>/documents">رفع إثبات محدث</a></td></tr><% }) %>
+  </tbody></table></div></div>
+<% } %>
+
+<% if (tab === 'reviews') { %>
+  <div class="card"><h2>طلبات مراجعة مفتوحة (زواج وغيره)</h2>
+  <div class="tablewrap"><table class="t"><thead><tr><th>الملف</th><th>المستفيد</th><th>النوع</th><th>التفاصيل</th><th>طلبه</th><th>الحالة الحالية</th><th>القرار</th></tr></thead><tbody>
+  <% if (!d.reviews.length) { %><tr><td colspan="7" class="empty">لا توجد طلبات</td></tr><% } %>
+  <% d.reviews.forEach(r => { %><tr><td><a href="/families/<%= r.family_id %>#m<%= r.member_id %>"><%= r.file_no %></a></td><td><%= r.full_name %></td><td><%= L.label('reviewType', r.review_type) %></td><td class="small"><%= r.details %></td><td class="small"><%= r.requester %></td><td><%- badge('eligibility', r.eligibility_status) %></td>
+    <td><% if (can('eligibility.decide')) { %>
+      <form method="post" action="/members/<%= r.member_id %>/decision" data-confirm="اعتماد القرار لـ <%= r.full_name %>؟">
+        <input type="hidden" name="_csrf" value="<%= csrf %>"><input type="hidden" name="review_id" value="<%= r.id %>"><input type="hidden" name="back" value="eligibility">
+        <% if (r.document_id) { %><input type="hidden" name="document_id" value="<%= r.document_id %>"><% } %>
+        <select name="new_status" style="margin-bottom:.3rem"><% L.options('eligibility').forEach(o => { %><option value="<%= o.value %>" <%= o.value === (r.review_type==='marriage' ? femaleStatus : r.eligibility_status) ? 'selected' : '' %>><%= o.text %></option><% }) %></select>
+        <input name="reason" required placeholder="سبب القرار (إلزامي)" style="margin-bottom:.3rem">
+        <button class="btn sm">اعتماد القرار</button>
+      </form>
+      <form method="post" action="/eligibility/reviews/<%= r.id %>/dismiss" style="margin-top:.4rem"><input type="hidden" name="_csrf" value="<%= csrf %>"><input name="reason" required placeholder="سبب الإغلاق دون تغيير"><button class="btn sm sec" style="margin-top:.3rem">إغلاق دون تغيير</button></form>
+    <% } else { %><span class="muted small">بانتظار المسؤول</span><% } %></td></tr><% }) %>
+  </tbody></table></div></div>
+  <div class="card"><h2>مستفيدون حالتهم تتطلب قرارًا إداريًا</h2>
+  <div class="tablewrap"><table class="t"><thead><tr><th>الملف</th><th>الاسم</th><th>الميلاد</th><th>العمر</th><th>الحالة</th></tr></thead><tbody>
+  <% if (!d.pendingDecision.length) { %><tr><td colspan="5" class="empty">لا يوجد</td></tr><% } %>
+  <% d.pendingDecision.forEach(m => { m.age = U.ageOn(m.birth_date); %><%- memberRow(m) %><% }) %></tbody></table></div></div>
+<% } %>
+
+<% if (tab === 'documents') { %>
+  <div class="card"><h2>مستندات منتهية</h2>
+  <div class="tablewrap"><table class="t"><thead><tr><th>الملف</th><th>المستند</th><th>صاحبه</th><th>انتهى في</th></tr></thead><tbody>
+  <% if (!d.expiredDocs.length) { %><tr><td colspan="4" class="empty">لا يوجد</td></tr><% } %>
+  <% d.expiredDocs.forEach(x => { %><tr><td><a href="/families/<%= x.family_id %>/documents"><%= x.file_no %></a></td><td><%= L.label('docType', x.doc_type) %></td><td><%= x.owner %></td><td class="num"><%= x.expiry_date %></td></tr><% }) %></tbody></table></div></div>
+  <div class="card"><h2>مستندات إلزامية ناقصة</h2>
+  <div class="tablewrap"><table class="t"><thead><tr><th>الملف</th><th>المستند الناقص</th><th>صاحبه</th></tr></thead><tbody>
+  <% if (!d.missing.length) { %><tr><td colspan="3" class="empty">لا يوجد</td></tr><% } %>
+  <% d.missing.forEach(x => { %><tr><td><a href="/families/<%= x.family_id %>/documents"><%= x.file_no %></a></td><td><%= L.label('docType', x.doc_type) %></td><td><%= x.owner %></td></tr><% }) %></tbody></table></div></div>
+<% } %>
+
+<% if (tab === 'sponsor') { %>
+  <div class="card"><h2>أسر نشطة بلا كفيل نشط</h2><p class="small muted">توقف الكفيل لا يوقف استحقاق الأسرة تلقائيًا؛ هذه الأسر تحتاج إلى كفيل بديل.</p>
+  <div class="tablewrap"><table class="t"><thead><tr><th>الملف</th><th>الأسرة</th><th></th></tr></thead><tbody>
+  <% if (!d.noSponsor.length) { %><tr><td colspan="3" class="empty">لا يوجد</td></tr><% } %>
+  <% d.noSponsor.forEach(f => { %><tr><td><a href="/families/<%= f.id %>"><%= f.file_no %></a></td><td><%= f.family_name %></td><td><% if (can('sponsors.edit')) { %><a class="btn sm sec" href="/sponsors?link_family=<%= f.id %>">ربط كفيل</a><% } %></td></tr><% }) %></tbody></table></div></div>
+<% } %>
+<%- include('../partials/foot') %>

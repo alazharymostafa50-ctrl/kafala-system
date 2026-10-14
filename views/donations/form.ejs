@@ -1,0 +1,21 @@
+<%- include('../partials/head', { title }) %>
+<div class="pagehead"><div><div class="crumbs"><a href="/donations">التبرعات</a> / جديد</div><h1>تسجيل تبرع</h1><p>رقم الإيصال يُنشأ تلقائيًا ولا يتكرر.</p></div></div>
+<form method="post" action="/donations"><input type="hidden" name="_csrf" value="<%= csrf %>">
+<fieldset><legend>بيانات التبرع</legend><div class="fields">
+  <div class="field"><label>نوع التبرع <span class="req">*</span></label><select name="type_code" required>
+    <% types.forEach(t => { %><option value="<%= t.code %>" <%= old('type_code')===t.code?'selected':'' %>><%= t.name %> — <%= t.fund_name %></option><% }) %></select></div>
+  <div class="field" data-show-when="type_code=family"><label>الأسرة المخصص لها <span class="req">*</span></label><select name="family_id"><option value="">—</option><% families.forEach(f => { %><option value="<%= f.id %>" <%= String(old('family_id'))===String(f.id)?'selected':'' %>><%= f.file_no %> — <%= f.family_name %></option><% }) %></select></div>
+  <div class="field" data-show-when="type_code=sponsor"><label>الكفيل <span class="req">*</span></label><select name="sponsor_id"><option value="">—</option><% sponsors.forEach(s => { %><option value="<%= s.id %>" <%= String(old('sponsor_id'))===String(s.id)?'selected':'' %>><%= s.sponsor_no %> — <%= s.full_name %></option><% }) %></select></div>
+  <div class="field"><label>اسم المتبرع أو رمز داخلي <span class="req">*</span></label><input name="donor_name" required value="<%= old('donor_name') %>" placeholder="فاعل خير / D-12"></div>
+  <div class="field"><label>المبلغ (<%= cur %>) <span class="req">*</span></label><input name="amount" inputmode="decimal" required value="<%= old('amount') %>"></div>
+  <div class="field"><label>تاريخ العملية <span class="req">*</span></label><input type="date" name="donation_date" required max="<%= U.todayISO() %>" value="<%= old('donation_date', U.todayISO()) %>"></div>
+  <div class="field"><label>طريقة الدفع <span class="req">*</span></label><select name="payment_method" required><% ['cash','bank_transfer','wallet','cheque','card','other'].forEach(k => { %><option value="<%= k %>" <%= old('payment_method')===k?'selected':'' %>><%= L.label('payout', k) %></option><% }) %></select></div>
+  <div class="field"><label>رقم مرجع التحويل أو الإيصال</label><input name="reference" dir="ltr" value="<%= old('reference') %>"><div class="hint">يُرفض تكرار نفس المرجع لنفس طريقة الدفع.</div></div>
+  <div class="field"><label>الشهر الذي خُصص له التبرع</label><input type="month" name="period" value="<%= old('period', U.currentPeriod()) %>"></div>
+  <div class="field wide"><label>الغرض من التبرع</label><input name="purpose" value="<%= old('purpose') %>"></div>
+  <div class="field wide"><label>ملاحظات</label><textarea name="notes"><%= old('notes') %></textarea></div>
+</div></fieldset>
+<% if (can('donations.collect')) { %><label class="check" style="margin-bottom:1rem"><input type="checkbox" name="collect_now" value="1" <%= old('collect_now', '1')==='1'?'checked':'' %>> المبلغ مستلم فعليًا — تأكيد التحصيل الآن (يُسجل القيد المالي)</label><% } else { %><div class="alert info">سيُسجل التبرع بانتظار التحصيل حتى يؤكده المحاسب.</div><% } %>
+<div class="formactions"><button class="btn">حفظ التبرع</button><a class="btn sec" href="/donations">إلغاء</a></div>
+</form>
+<%- include('../partials/foot') %>

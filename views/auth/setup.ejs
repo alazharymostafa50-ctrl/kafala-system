@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>تفعيل النظام — <%= org.system_name %></title>
+<link rel="icon" href="/static/img/icon-32.png" type="image/png">
+<link rel="stylesheet" href="/static/css/app.css">
+</head>
+<body>
+<div class="authpage">
+  <div class="authcard">
+    <img src="<%= org.logo %>" alt="شعار الجمعية">
+    <h1>تفعيل <%= org.system_name %></h1>
+    <div class="muted small">إنشاء حساب مدير النظام — يتم مرة واحدة فقط</div>
+    <% if (flash) { %><div class="alert <%= flash.type %>" style="margin-top:1rem"><%= flash.msg %></div><% } %>
+    <% if (!configured) { %>
+      <div class="alert warning" style="margin-top:1rem;text-align:right">مفتاح التفعيل غير مضبوط بعد. أضف متغير البيئة <b dir="ltr">OWNER_SETUP_KEY</b> في إعدادات الاستضافة ثم أعد النشر.</div>
+    <% } else { %>
+    <form method="post" action="/setup" autocomplete="off">
+      <input type="hidden" name="_csrf" value="<%= csrf %>">
+      <div class="field"><label>مفتاح التفعيل</label><input name="setup_key" type="password" required dir="ltr"></div>
+      <div class="field"><label>اسم المستخدم (حروف إنجليزية)</label><input name="username" required pattern="[A-Za-z0-9_.\-]{3,40}" dir="ltr" autocomplete="username"></div>
+      <div class="field"><label>الاسم الكامل</label><input name="full_name" required></div>
+      <div class="field"><label>كلمة المرور (10 أحرف على الأقل، حروف وأرقام)</label><input name="password" type="password" required minlength="10" dir="ltr" autocomplete="new-password"></div>
+      <div class="field"><label>تأكيد كلمة المرور</label><input name="confirm_password" type="password" required dir="ltr" autocomplete="new-password"></div>
+      <button class="btn" type="submit">تفعيل وإنشاء الحساب</button>
+    </form>
+    <% } %>
+  </div>
+</div>
+<script src="/static/js/app.js"></script>
+</body>
+</html>

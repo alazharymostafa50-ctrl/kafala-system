@@ -1,0 +1,24 @@
+<%- include('../partials/head', { title }) %>
+<div class="pagehead"><div><h1>المصادقة الثنائية</h1><p>حماية إضافية للحساب برمز متغير من تطبيق مثل Google Authenticator أو Microsoft Authenticator.</p></div></div>
+<div class="card" style="max-width:620px">
+<% if (user.totp_enabled) { %>
+  <div class="alert success">المصادقة الثنائية مفعلة لحسابك.</div>
+  <form method="post" action="/account/2fa" data-confirm="هل تريد إيقاف المصادقة الثنائية؟ سيقل مستوى حماية حسابك.">
+    <input type="hidden" name="_csrf" value="<%= csrf %>"><input type="hidden" name="action" value="disable">
+    <div class="field" style="margin-bottom:.8rem"><label>أدخل كلمة المرور للتأكيد</label><input type="password" name="current_password" required dir="ltr"></div>
+    <button class="btn danger">إيقاف المصادقة الثنائية</button>
+  </form>
+<% } else { %>
+  <ol>
+    <li>افتح تطبيق المصادقة على جوالك وامسح الرمز التالي:</li>
+  </ol>
+  <img src="<%= qr %>" alt="رمز QR" width="220" height="220" style="display:block;margin:0 auto 0 0">
+  <p class="small muted">أو أدخل المفتاح يدويًا: <code class="ltr"><%= secret %></code></p>
+  <form method="post" action="/account/2fa">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+    <div class="field" style="margin-bottom:.8rem;max-width:240px"><label>الرمز المكون من 6 أرقام</label><input name="code" inputmode="numeric" maxlength="6" required dir="ltr"></div>
+    <button class="btn">تفعيل</button>
+  </form>
+<% } %>
+</div>
+<%- include('../partials/foot') %>

@@ -1,0 +1,28 @@
+<%- include('../partials/head', { title }) %>
+<div class="pagehead"><div><div class="crumbs"><a href="/import">الاستيراد</a> / دفعة <%= b.id %></div><h1>استيراد <%= label %> — <%= b.file_name %></h1><p><%= b.rows.length %> صف بيانات</p></div></div>
+<% if (b.status === 'completed') { const r = b.result; %>
+<div class="card"><h2>تقرير الاستيراد</h2>
+<div class="kpis"><div class="kpi ok"><div class="k">تم استيرادها</div><div class="v"><%= r.imported %></div></div><div class="kpi bad"><div class="k">فشلت</div><div class="v"><%= r.failed %></div></div></div>
+<% if (r.failures.length) { %><h3>الصفوف التي لم تُستورد</h3><table class="t"><thead><tr><th>الصف</th><th>الأخطاء</th></tr></thead><tbody><% r.failures.forEach(f => { %><tr><td><%= f.row %></td><td class="small"><%= f.errors.join(' — ') %></td></tr><% }) %></tbody></table><% } %>
+<% if (r.imported_refs.length) { %><h3 style="margin-top:1rem">السجلات المستوردة</h3><p class="small"><%= r.imported_refs.map(x => 'صف ' + x.row + ': ' + x.ref).join(' · ') %></p><% } %>
+</div>
+<% } else if (b.status === 'cancelled') { %><div class="alert info">تم إلغاء هذه الدفعة.</div>
+<% } else { const ok = results.filter(r => !r.errors.length).length, bad = results.length - ok; %>
+<div class="card"><h2>مطابقة الأعمدة</h2>
+<form method="post" action="/import/<%= b.id %>/mapping"><input type="hidden" name="_csrf" value="<%= csrf %>">
+<div class="fields"><% fields.forEach(f => { %><div class="field"><label><%= f.label %> <%- f.required ? '<span class="req">*</span>' : '' %></label><select name="map_<%= f.key %>"><option value="">— لا يوجد —</option><% b.headers.forEach((hd, i) => { %><option value="<%= i %>" <%= String(b.mapping[f.key])===String(i)?'selected':'' %>><%= hd %></option><% }) %></select></div><% }) %></div>
+<div class="formactions"><button class="btn sec">تطبيق المطابقة وإعادة التحقق</button></div></form></div>
+<div class="kpis"><div class="kpi ok"><div class="k">صفوف صالحة</div><div class="v"><%= ok %></div></div><div class="kpi bad"><div class="k">صفوف بها أخطاء (لن تُستورد)</div><div class="v"><%= bad %></div></div></div>
+<div class="card"><h2>المعاينة والتحقق</h2>
+<div class="tablewrap"><table class="t"><thead><tr><th>الصف</th><% fields.forEach(f => { %><th><%= f.label %></th><% }) %><th>النتيجة</th></tr></thead><tbody>
+<% results.slice(0, 200).forEach(r => { const raw = b.rows[r.row - 2]; %><tr style="<%= r.errors.length ? 'background:var(--danger-bg)' : '' %>"><td><%= r.row %></td>
+<% fields.forEach(f => { const idx = b.mapping[f.key]; %><td class="small"><%= idx === '' || idx === undefined ? '' : raw[idx] %></td><% }) %>
+<td class="small"><%- r.errors.length ? '<span style="color:var(--danger)">' + r.errors.map(esc).join('<br>') + '</span>' : '<span class="badge success">صالح</span>' %></td></tr><% }) %>
+</tbody></table></div><% if (results.length > 200) { %><p class="small muted">تُعرض أول 200 صف؛ التحقق يشمل جميع الصفوف.</p><% } %></div>
+<div class="card"><form method="post" action="/import/<%= b.id %>/commit" data-confirm="استيراد <%= ok %> صف صالح؟ الصفوف التي بها أخطاء لن تُستورد وستظهر في التقرير."><input type="hidden" name="_csrf" value="<%= csrf %>">
+<% if (b.import_type === 'members' && can('eligibility.decide')) { %><label class="check"><input type="checkbox" name="approve_eligible" value="1"> اعتماد الأفراد المستوردين كمستحقين (قرار ابتدائي موثق باسمك)، وإلا ستكون حالتهم «قيد المراجعة»</label><% } %>
+<% if (b.import_type === 'families') { %><p class="small muted">تُنشأ الأسر بحالة «قيد المراجعة» حتى يفعّلها المسؤول.</p><% } %>
+<div class="btns"><button class="btn" <%= ok ? '' : 'disabled' %>>تأكيد استيراد <%= ok %> صف</button></div></form>
+<form method="post" action="/import/<%= b.id %>/cancel" style="margin-top:.6rem"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn sec">إلغاء الدفعة</button></form></div>
+<% } %>
+<%- include('../partials/foot') %>

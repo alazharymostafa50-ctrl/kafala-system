@@ -1,0 +1,41 @@
+{
+  "name": "kafala-system",
+  "version": "1.0.0",
+  "description": "نظام إدارة كفالة الأيتام — الجمعية الشرعية",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "migrate": "node scripts/migrate.js",
+    "create-admin": "node scripts/create-admin.js",
+    "seed:demo": "node scripts/seed-demo.js",
+    "backup": "node scripts/backup.js",
+    "restore": "node scripts/restore.js",
+    "test": "node --test --test-concurrency=1 test/*.test.js"
+  },
+  "license": "UNLICENSED",
+  "dependencies": {
+    "@fontsource/cairo": "^5.3.0",
+    "@sparticuz/chromium": "^153.0.0",
+    "bcryptjs": "^3.0.3",
+    "chart.js": "^4.5.1",
+    "connect-pg-simple": "^10.0.0",
+    "dotenv": "^18.0.8",
+    "ejs": "^7.0.1",
+    "exceljs": "^4.4.0",
+    "express": "^4.22.3",
+    "express-session": "^1.19.0",
+    "helmet": "^8.3.0",
+    "multer": "^2.4.0",
+    "pg": "^8.23.1",
+    "puppeteer-core": "^25.14.0",
+    "qrcode": "^1.5.4"
+  },
+  "devDependencies": {
+    "supertest": "^7.3.1"
+  },
+  "private": true,
+  "engines": {
+    "node": "22.x"
+  }
+}

@@ -1,0 +1,48 @@
+<%- include('../partials/head', { title }) %>
+<% const o = s.org || {}, e = s.eligibility || {}, f = s.finance || {}, d = s.documents || {}; %>
+<div class="pagehead"><div><h1>إعدادات النظام</h1><p>كل التغييرات تُسجل في سجل التدقيق، ولا تعدّل الكشوف والتقارير السابقة.</p></div></div>
+<div class="card"><h2>بيانات الجمعية والهوية</h2>
+<form method="post" action="/admin/settings/org?_csrf=<%= csrf %>" enctype="multipart/form-data">
+<div class="fields">
+  <div class="field"><label>اسم الجمعية</label><input name="name" required value="<%= o.name %>"></div>
+  <div class="field wide"><label>الوصف / الفرع</label><input name="subtitle" value="<%= o.subtitle %>"></div>
+  <div class="field"><label>اسم النظام</label><input name="system_name" required value="<%= o.system_name %>"></div>
+  <div class="field"><label>اسم البرنامج</label><input name="program_name" value="<%= o.program_name %>"></div>
+  <div class="field"><label>هاتف التواصل الرسمي</label><input name="phone" dir="ltr" value="<%= o.phone %>"></div>
+  <div class="field"><label>العنوان</label><input name="address" value="<%= o.address %>"></div>
+  <div class="field"><label>رمز العملة</label><input name="currency" required value="<%= o.currency %>"></div>
+  <div class="field"><label>الشعار (PNG)</label><input type="file" name="logo" accept="image/png"><div class="hint"><img src="<%= org.logo %>" alt="" style="width:48px;height:48px;vertical-align:middle"> الشعار الحالي</div></div>
+  <div class="field"><label class="check"><input type="checkbox" name="reset_logo" value="1"> استعادة الشعار الافتراضي</label></div>
+</div><div class="formactions"><button class="btn">حفظ بيانات الجمعية</button></div></form></div>
+
+<form method="post" action="/admin/settings/rules" data-confirm="حفظ قواعد الاستحقاق والمالية والمستندات؟"><input type="hidden" name="_csrf" value="<%= csrf %>">
+<div class="card"><h2>قواعد العمر والاستحقاق</h2><div class="fields">
+  <div class="field"><label>سن مراجعة استحقاق الذكور</label><input type="number" name="male_review_age" min="14" max="30" value="<%= e.male_review_age %>"></div>
+  <div class="field"><label>التنبيه قبل البلوغ (بالأشهر، مفصولة بفاصلة)</label><input name="alert_months_before" dir="ltr" value="<%= (e.alert_months_before || []).join(',') %>"></div>
+  <div class="field"><label>التنبيه قبل انتهاء الإثبات الجامعي (أيام)</label><input type="number" name="proof_expiry_alert_days" value="<%= e.proof_expiry_alert_days %>"></div>
+  <div class="field"><label>التنبيه قبل انتهاء المستندات (أيام)</label><input type="number" name="document_expiry_alert_days" value="<%= e.document_expiry_alert_days || 30 %>"></div>
+  <div class="field"><label>الحالة المقترحة للأنثى بعد اعتماد الزواج</label><select name="female_marriage_new_status"><% L.options('eligibility').forEach(x => { %><option value="<%= x.value %>" <%= e.female_marriage_new_status===x.value?'selected':'' %>><%= x.text %></option><% }) %></select><div class="hint">لا تُطبق إلا بقرار يعتمده المسؤول.</div></div>
+  <div class="field wide"><label>حالات الاستحقاق التي يُصرف لها</label><div class="btns"><% L.options('eligibility').forEach(x => { %><label class="check"><input type="checkbox" name="paying_statuses" value="<%= x.value %>" <%= (e.paying_statuses || []).includes(x.value) ? 'checked' : '' %>> <%= x.text %></label><% }) %></div></div>
+</div></div>
+<div class="card"><h2>القواعد المالية</h2><div class="fields">
+  <label class="check"><input type="checkbox" name="separation_of_duties" value="1" <%= f.separation_of_duties ? 'checked' : '' %>> فصل المهام: لا يعتمد المستخدم عملية أو تقريرًا أنشأه بنفسه</label>
+  <label class="check"><input type="checkbox" name="disbursement_requires_approval" value="1" <%= f.disbursement_requires_approval ? 'checked' : '' %>> الصرف للأسر يتطلب اعتمادًا قبل تسجيله ماليًا</label>
+  <label class="check"><input type="checkbox" name="allow_partial_disbursement" value="1" <%= f.allow_partial_disbursement ? 'checked' : '' %>> السماح بالصرف الجزئي</label>
+  <label class="check"><input type="checkbox" name="allow_general_fund_for_kafala" value="1" <%= f.allow_general_fund_for_kafala ? 'checked' : '' %>> السماح بصرف الكفالات من الصندوق العام عند الحاجة</label>
+</div></div>
+<div class="card"><h2>المستندات</h2><div class="fields">
+  <div class="field"><label>الحجم الأقصى للملف (ميجابايت)</label><input type="number" name="max_size_mb" min="1" max="25" value="<%= d.max_size_mb %>"></div>
+  <% const dt = ['guardian_id','member_id','birth_certificate','orphan_proof','guardianship','bank_document']; %>
+  <div class="field wide"><label>مستندات إلزامية لكل أسرة</label><div class="btns"><% dt.forEach(t => { %><label class="check"><input type="checkbox" name="required_family" value="<%= t %>" <%= (d.required_family || []).includes(t) ? 'checked' : '' %>> <%= L.label('docType', t) %></label><% }) %></div></div>
+  <div class="field wide"><label>مستندات إلزامية لكل مستفيد</label><div class="btns"><% dt.forEach(t => { %><label class="check"><input type="checkbox" name="required_member" value="<%= t %>" <%= (d.required_member || []).includes(t) ? 'checked' : '' %>> <%= L.label('docType', t) %></label><% }) %></div></div>
+</div></div>
+<div class="formactions" style="margin-bottom:1.2rem"><button class="btn">حفظ القواعد</button></div>
+</form>
+
+<div class="grid g2">
+<div class="card" id="types"><h2>أنواع التبرعات</h2><table class="t"><tbody><% types.forEach(t => { %><tr><td><%= t.name %></td><td class="small"><%= t.fund_code === 'orphans' ? 'مقيد' : 'عام' %></td><td><%- t.is_active ? '<span class="badge success">مفعل</span>' : '<span class="badge muted">معطل</span>' %></td><td><% if (!t.is_system) { %><form method="post" action="/admin/settings/donation-types/<%= t.code %>/toggle"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn sm sec">تبديل</button></form><% } else { %><span class="small muted">أساسي</span><% } %></td></tr><% }) %></tbody></table>
+<form method="post" action="/admin/settings/donation-types" class="btns" style="margin-top:.8rem"><input type="hidden" name="_csrf" value="<%= csrf %>"><input name="name" required placeholder="نوع جديد" style="width:auto;flex:1"><select name="fund_code" style="width:auto"><option value="general">عام</option><option value="orphans">مقيد للكفالات</option></select><button class="btn sm">إضافة</button></form></div>
+<div class="card" id="cats"><h2>تصنيفات المصروفات</h2><table class="t"><tbody><% cats.forEach(c => { %><tr><td><%= c.name %></td><td class="small"><%= c.allowed_funds.includes('orphans') ? 'يسمح بالصندوق المقيد' : 'الصندوق العام فقط' %></td></tr><% }) %></tbody></table>
+<form method="post" action="/admin/settings/expense-categories" class="btns" style="margin-top:.8rem"><input type="hidden" name="_csrf" value="<%= csrf %>"><input name="name" required placeholder="تصنيف جديد" style="width:auto;flex:1"><label class="check"><input type="checkbox" name="allow_restricted" value="1"> يسمح بالمقيد</label><button class="btn sm">إضافة</button></form></div>
+</div>
+<%- include('../partials/foot') %>

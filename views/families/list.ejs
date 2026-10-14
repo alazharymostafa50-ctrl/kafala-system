@@ -1,0 +1,34 @@
+<%- include('../partials/head', { title }) %>
+<div class="pagehead"><div><h1>إدارة الأسر</h1><p>ابحث برقم الملف أو اسم الأسرة/ولي الأمر/الفرد أو رقم الجوال.</p></div>
+<% if (can('families.edit')) { %><a class="btn" href="/families/new"><%- icon('plus') %> إضافة أسرة</a><% } %></div>
+<form class="filters card" method="get">
+  <div class="field grow"><label>بحث</label><input type="search" name="q" value="<%= query.q || '' %>" placeholder="F-1001 أو الاسم أو الجوال"></div>
+  <div class="field"><label>الحالة</label><select name="status">
+    <option value="">الكل (عدا المؤرشفة)</option><option value="all" <%= query.status==='all'?'selected':'' %>>الكل مع المؤرشفة</option>
+    <% L.options('familyStatus').forEach(o => { %><option value="<%= o.value %>" <%= query.status===o.value?'selected':'' %>><%= o.text %></option><% }) %>
+  </select></div>
+  <div class="field"><label>المدينة</label><select name="city"><option value="">الكل</option><% cities.forEach(c => { %><option <%= query.city===c.city?'selected':'' %>><%= c.city %></option><% }) %></select></div>
+  <div class="field"><label class="check"><input type="checkbox" name="nosponsor" value="1" <%= query.nosponsor==='1'?'checked':'' %>> بلا كفيل نشط</label></div>
+  <button class="btn sec"><%- icon('search') %> بحث</button>
+</form>
+<div class="tablewrap"><table class="t">
+<thead><tr><th>رقم الملف</th><th>اسم الأسرة</th><th>ولي الأمر</th><th>الجوال</th><th>المدينة</th><th>الأفراد</th><th>المستحقون</th><th>الكفلاء</th><th>طريقة الاحتساب</th><th>الحالة</th></tr></thead>
+<tbody>
+<% if (!p.rows.length) { %><tr><td colspan="10" class="empty">لا توجد نتائج مطابقة</td></tr><% } %>
+<% p.rows.forEach(f => { %>
+<tr>
+  <td><a href="/families/<%= f.id %>"><b><%= f.file_no %></b></a></td>
+  <td><a href="/families/<%= f.id %>"><%= f.family_name %></a></td>
+  <td><%= f.guardian_name %></td>
+  <td class="num"><%= f.phone %></td>
+  <td><%= f.city || '—' %></td>
+  <td><%= f.members_count %></td>
+  <td><%= f.eligible_count %></td>
+  <td><%- f.sponsors_count ? f.sponsors_count : '<span class="badge warning">لا يوجد</span>' %></td>
+  <td class="small"><%= L.label('calcMethod', f.calc_method) %></td>
+  <td><%- badge('familyStatus', f.status) %></td>
+</tr>
+<% }) %>
+</tbody></table></div>
+<%- include('../partials/pager', { p }) %>
+<%- include('../partials/foot') %>

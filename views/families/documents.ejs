@@ -1,0 +1,48 @@
+<%- include('../partials/head', { title }) %>
+<div class="pagehead"><div><div class="crumbs"><a href="/families">الأسر</a> / <a href="/families/<%= f.id %>"><%= f.file_no %></a> / المستندات</div><h1>مستندات <%= f.family_name %></h1><p>تُخزَّن في مساحة خاصة ولا تُعرض إلا بعد التحقق من الصلاحية.</p></div>
+<a class="btn sec" href="/families/<%= f.id %>">العودة للملف</a></div>
+<% if (missing.length) { %><div class="alert warning"><b>مستندات ناقصة:</b> <%= missing.map(x => L.label('docType', x.doc_type) + ' — ' + x.owner).join('، ') %></div><% } %>
+
+<% if (can('documents.upload')) { %>
+<div class="card"><h2>رفع مستند</h2>
+<form method="post" action="/families/<%= f.id %>/documents?_csrf=<%= csrf %>" enctype="multipart/form-data">
+  <div class="fields">
+    <div class="field"><label>نوع المستند <span class="req">*</span></label><select name="doc_type" required><option value="">—</option><% DOC_TYPES.forEach(t => { %><option value="<%= t %>"><%= L.label('docType', t) %></option><% }) %></select></div>
+    <div class="field"><label>المستفيد (إن وجد)</label><select name="member_id"><option value="">مستند خاص بالأسرة/ولي الأمر</option><% members.forEach(m => { %><option value="<%= m.id %>"><%= m.member_no %> — <%= m.full_name %></option><% }) %></select></div>
+    <div class="field"><label>تاريخ الإصدار</label><input type="date" name="issue_date"></div>
+    <div class="field"><label>تاريخ الانتهاء</label><input type="date" name="expiry_date"><div class="hint">إلزامي لإثبات القيد الجامعي</div></div>
+    <div class="field"><label>يستبدل المستند</label><select name="replaces_id"><option value="">—</option><% docs.filter(d => d.status !== 'replaced').forEach(d => { %><option value="<%= d.id %>"><%= L.label('docType', d.doc_type) %> — <%= d.member_name || 'الأسرة' %> (<%= d.uploaded_at.toISOString().slice(0,10) %>)</option><% }) %></select></div>
+    <div class="field"><label>الملف <span class="req">*</span></label><input type="file" name="file" required accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/*"></div>
+    <div class="field wide"><label>ملاحظات</label><input name="notes" maxlength="500"></div>
+  </div>
+  <div class="formactions"><button class="btn"><%- icon('upload') %> رفع المستند</button></div>
+</form></div>
+<% } %>
+
+<div class="tablewrap"><table class="t">
+<thead><tr><th>النوع</th><th>صاحب المستند</th><th>الملف</th><th>الإصدار</th><th>الانتهاء</th><th>الحالة</th><th>رفعه</th><th>راجعه</th><th></th></tr></thead>
+<tbody>
+<% if (!docs.length) { %><tr><td colspan="9" class="empty">لا توجد مستندات</td></tr><% } %>
+<% docs.forEach(d => { const expired = d.expiry_date && d.expiry_date < today; %>
+<tr style="<%= d.status==='replaced' ? 'opacity:.55' : '' %>">
+  <td><%= L.label('docType', d.doc_type) %></td><td><%= d.member_name || 'الأسرة / ولي الأمر' %></td>
+  <td class="small"><%= d.original_name %> <span class="muted">(<%= Math.ceil(d.size_bytes/1024) %> ك.ب)</span></td>
+  <td class="num"><%= d.issue_date || '—' %></td>
+  <td class="num"><%= d.expiry_date || '—' %> <%- expired ? '<span class="badge danger">منتهي</span>' : '' %></td>
+  <td><%- badge('docStatus', d.status) %></td>
+  <td class="small"><%= d.uploader %><br><span class="muted"><%= d.uploaded_at.toISOString().slice(0,10) %></span></td>
+  <td class="small"><%= d.reviewer || '—' %></td>
+  <td class="actions">
+    <% if (can('documents.view') && (!SENSITIVE_TYPES.includes(d.doc_type) || can('families.sensitive'))) { %>
+      <a class="btn sm sec" href="/documents/<%= d.id %>/file" target="_blank" rel="noopener">معاينة</a>
+      <a class="btn sm sec" href="/documents/<%= d.id %>/file?download=1">تنزيل</a>
+    <% } %>
+    <% if (can('documents.approve') && d.status === 'pending') { %>
+      <form method="post" action="/documents/<%= d.id %>/review" class="inline"><input type="hidden" name="_csrf" value="<%= csrf %>"><input type="hidden" name="action" value="approve"><button class="btn sm">اعتماد</button></form>
+      <form method="post" action="/documents/<%= d.id %>/review" class="inline" data-confirm="رفض هذا المستند؟"><input type="hidden" name="_csrf" value="<%= csrf %>"><input type="hidden" name="action" value="reject"><button class="btn sm danger">رفض</button></form>
+    <% } %>
+  </td>
+</tr>
+<% }) %>
+</tbody></table></div>
+<%- include('../partials/foot') %>

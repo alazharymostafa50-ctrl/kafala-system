@@ -1,0 +1,31 @@
+<%- include('../partials/head', { title }) %>
+<% const act = (action, text, cls, opts = {}) => `<form method="post" action="/expenses/${e.id}/action" class="${opts.block ? '' : 'inline'}" ${opts.confirm ? `data-confirm="${opts.confirm}"` : ''}><input type="hidden" name="_csrf" value="${csrf}"><input type="hidden" name="action" value="${action}">${opts.extra || ''}<button class="btn ${cls}">${text}</button></form>`; %>
+<div class="pagehead"><div><div class="crumbs"><a href="/expenses">المصروفات</a> / <%= e.expense_no %></div><h1>المصروف <%= e.expense_no %> <%- badge('expenseStatus', e.status) %></h1></div></div>
+<div class="grid g2">
+<div class="card"><h2>البيانات</h2><dl class="dl">
+  <dt>التاريخ</dt><dd><%= e.expense_date %></dd><dt>الشهر المالي</dt><dd><%= U.periodLabel(e.period) %></dd>
+  <dt>التصنيف</dt><dd><%= e.category_name %></dd><dt>الصندوق</dt><dd><%= e.fund_name %></dd>
+  <dt>الوصف</dt><dd><%= e.description %></dd><dt>المبلغ</dt><dd><b class="num"><%= fmt(e.amount) %></b> <%= cur %></dd>
+  <dt>الجهة المستفيدة</dt><dd><%= e.payee || '—' %></dd><dt>طريقة الدفع</dt><dd><%= e.payment_method || '—' %></dd>
+  <dt>الفاتورة/الإيصال</dt><dd class="ltr"><%= e.invoice_no || '—' %></dd>
+  <dt>المستند المؤيد</dt><dd><% if (e.document_id) { %><a href="/documents/<%= e.document_id %>/file" target="_blank" rel="noopener">عرض المستند</a><% } else { %>—<% } %></dd>
+  <dt>سجله</dt><dd><%= e.created_name %></dd><dt>المعتمد</dt><dd><%= e.approved_name || '—' %></dd><dt>الدافع</dt><dd><%= e.paid_name || '—' %></dd>
+  <% if (e.reversal_reason) { %><dt>سبب الإلغاء</dt><dd><%= e.reversal_reason %></dd><% } %>
+  <dt>ملاحظات</dt><dd><%= e.notes || '—' %></dd>
+</dl></div>
+<div>
+<div class="card noprint"><h2>الإجراءات</h2>
+<div class="btns" style="flex-direction:column;align-items:stretch;gap:.8rem">
+<% if (can('expenses.edit') && ['draft','rejected'].includes(e.status)) { %><%- act('submit', 'إرسال للاعتماد', '') %><% } %>
+<% if (can('expenses.approve') && e.status === 'pending_approval') { %>
+  <% if (sep && e.created_by === user.id) { %><div class="alert info" style="margin:0">لا يمكنك اعتماد مصروف أنشأته بنفسك (فصل المهام).</div><% } else { %>
+  <%- act('approve', 'اعتماد المصروف', '', { confirm: 'اعتماد هذا المصروف؟ الاعتماد لا يعني الدفع.' }) %>
+  <%- act('reject', 'رفض', 'danger', { block: true, extra: '<input name="comment" required placeholder="سبب الرفض" style="margin-bottom:.4rem">' }) %><% } %>
+<% } %>
+<% if (can('expenses.pay') && e.status === 'approved') { %><%- act('pay', 'تسجيل الدفع وخصمه من الصندوق', 'gold', { block: true, confirm: 'تأكيد دفع المصروف فعليًا؟ سيُخصم من الصندوق.', extra: `<label>تاريخ الدفع</label><input type="date" name="paid_date" required value="${U.todayISO()}" style="margin-bottom:.4rem">` }) %><% } %>
+<% if (can('expenses.pay') && e.status === 'paid') { %><%- act('reverse', 'إلغاء بقيد عكسي', 'danger', { block: true, confirm: 'إلغاء المصروف المدفوع بقيد عكسي؟ سيبقى القيد الأصلي محفوظًا.', extra: '<input name="comment" required placeholder="سبب الإلغاء" style="margin-bottom:.4rem">' }) %><% } %>
+</div></div>
+<div class="card"><h2>مسار الاعتماد</h2><ul class="timeline"><% if (!steps.length) { %><li class="muted">لا يوجد</li><% } %><% steps.forEach(s => { %><li><b><%= ({submit:'إرسال',approve:'اعتماد',reject:'رفض',pay:'دفع',reverse:'عكس'})[s.action] %></b> — <%= s.full_name %> <span class="muted small"><%= s.at.toISOString().slice(0,16).replace('T',' ') %></span><%= s.comment ? ' — ' + s.comment : '' %></li><% }) %></ul></div>
+<div class="card"><h2>القيود المالية</h2><table class="t"><tbody><% if (!ledger.length) { %><tr><td class="empty">لا يوجد قيد — المصروف غير مدفوع</td></tr><% } %><% ledger.forEach(l => { %><tr><td>#<%= l.id %></td><td class="num"><%= l.entry_date %></td><td><%- badge('direction', l.direction) %></td><td class="num"><%= fmt(l.amount) %></td></tr><% }) %></tbody></table></div>
+</div></div>
+<%- include('../partials/foot') %>

@@ -1,0 +1,56 @@
+<%- include('../partials/head', { title }) %>
+<div class="pagehead">
+  <div><div class="crumbs"><a href="/sponsors">الكفلاء</a> / <%= s.sponsor_no %></div><h1><%= s.full_name %> <%- badge('sponsorStatus', s.status) %></h1>
+  <p>الجوال: <span class="ltr"><%= s.phone %></span><%= s.phone_alt ? ' / ' + s.phone_alt : '' %> · <%= L.label('sponsorType', s.sponsorship_type) %> · التعهد الشهري <b class="num"><%= fmt(s.monthly_pledge) %></b> <%= cur %> · منذ <%= s.start_date || '—' %></p></div>
+  <% if (can('sponsors.edit')) { %><a class="btn sec" href="/sponsors/<%= s.id %>/edit"><%- icon('edit') %> تعديل</a><% } %>
+</div>
+<% if (s.notes) { %><div class="alert info"><%= s.notes %></div><% } %>
+
+<div class="card"><div class="cardhead"><h2>الأسر المرتبطة</h2></div>
+<div class="tablewrap"><table class="t"><thead><tr><th>الأسرة</th><th>النوع</th><th class="num">المبلغ الشهري</th><th>من</th><th>إلى</th><th>الحالة</th><th></th></tr></thead><tbody>
+<% if (!links.length) { %><tr><td colspan="7" class="empty">لا توجد أسر مرتبطة</td></tr><% } %>
+<% links.forEach(l => { %><tr><td><%= can('families.view') ? '' : '' %><a href="/families/<%= l.family_id %>"><%= l.file_no %></a> — <%= l.family_name %></td><td><%= L.label('sponsorType', l.sponsorship_type) %></td><td class="num"><%= fmt(l.monthly_amount) %></td><td><%= l.start_date %></td><td><%= l.end_date || '—' %></td><td><%- badge('linkStatus', l.status) %></td>
+<td><% if (can('sponsors.edit') && l.status === 'active') { %><details><summary class="small" style="cursor:pointer">إنهاء</summary><form method="post" action="/links/<%= l.id %>/end" data-confirm="إنهاء ارتباط الكفيل بهذه الأسرة؟ سيبقى السجل محفوظًا."><input type="hidden" name="_csrf" value="<%= csrf %>"><input type="date" name="end_date" required value="<%= U.todayISO() %>"><input name="reason" required placeholder="السبب" style="margin:.3rem 0"><button class="btn sm danger">إنهاء الارتباط</button></form></details><% } %></td></tr><% }) %>
+</tbody></table></div>
+<% if (can('sponsors.edit')) { %>
+<form method="post" action="/sponsors/<%= s.id %>/links" id="link" style="margin-top:1rem"><input type="hidden" name="_csrf" value="<%= csrf %>">
+  <h3>ربط بأسرة</h3>
+  <div class="fields">
+    <div class="field"><label>الأسرة</label><select name="family_id" required><option value="">—</option><% families.forEach(f => { %><option value="<%= f.id %>" <%= String(preselect)===String(f.id)?'selected':'' %>><%= f.file_no %> — <%= f.family_name %></option><% }) %></select></div>
+    <div class="field"><label>نوع الكفالة</label><select name="sponsorship_type"><% L.options('sponsorType').forEach(o => { %><option value="<%= o.value %>"><%= o.text %></option><% }) %></select></div>
+    <div class="field"><label>المبلغ الشهري المخصص</label><input name="monthly_amount" inputmode="decimal" required></div>
+    <div class="field"><label>تاريخ البداية</label><input type="date" name="start_date" required value="<%= U.todayISO() %>"></div>
+    <div class="field wide"><label>ملاحظات</label><input name="notes"></div>
+  </div><div class="formactions"><button class="btn">ربط</button></div>
+</form>
+<% } %>
+</div>
+
+<div class="card"><div class="cardhead"><h2>سجل السداد الشهري</h2>
+<% if (can('donations.edit')) { %><span class="small muted">المبلغ المتعهد به ليس تبرعًا محصلًا حتى يُؤكَّد استلامه.</span><% } %></div>
+<div class="tablewrap"><table class="t"><thead><tr><th>الشهر</th><th class="num">المتعهد به</th><th class="num">المحصل</th><th class="num">المتبقي</th><th>آخر تحصيل</th><th>الحالة</th><th></th></tr></thead><tbody>
+<% if (!pledges.length) { %><tr><td colspan="7" class="empty">لا توجد تعهدات — أنشئها من «متابعة التعهدات الشهرية»</td></tr><% } %>
+<% pledges.forEach(p => { %><tr><td><%= U.periodLabel(p.period) %></td><td class="num"><%= fmt(p.pledged_amount) %></td><td class="num"><%= fmt(p.collected) %></td><td class="num"><%= fmt(p.remaining) %></td><td class="num"><%= p.last_collected || '—' %></td><td><%- badge('pledgeStatus', p.pstatus) %></td>
+<td class="actions"><% if (can('sponsors.edit')) { %><form method="post" action="/pledges/<%= p.id %>/review" class="inline"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn sm sec"><%= p.needs_review ? 'إلغاء المراجعة' : 'يحتاج مراجعة' %></button></form><% } %></td></tr><% }) %>
+</tbody></table></div>
+<% if (can('donations.edit')) { %>
+<form method="post" action="/sponsors/<%= s.id %>/collect" style="margin-top:1rem" data-confirm="تسجيل تحصيل مساهمة الكفيل؟ ستُضاف إلى صندوق كفالة الأيتام مرة واحدة."><input type="hidden" name="_csrf" value="<%= csrf %>">
+  <h3>تسجيل تحصيل مساهمة</h3>
+  <div class="fields">
+    <div class="field"><label>الشهر المستحق</label><input type="month" name="period" required value="<%= U.currentPeriod() %>"></div>
+    <div class="field"><label>المبلغ المحصل</label><input name="amount" inputmode="decimal" required value="<%= s.monthly_pledge %>"></div>
+    <div class="field"><label>تاريخ التحصيل</label><input type="date" name="donation_date" required value="<%= U.todayISO() %>" max="<%= U.todayISO() %>"></div>
+    <div class="field"><label>طريقة الدفع</label><select name="payment_method"><% ['cash','bank_transfer','wallet','cheque','card','other'].forEach(k => { %><option value="<%= k %>"><%= L.label('payout', k) %></option><% }) %></select></div>
+    <div class="field"><label>رقم الإيصال / مرجع التحويل</label><input name="reference" dir="ltr"></div>
+    <input type="hidden" name="donor_name" value="<%= s.full_name %>">
+  </div><div class="formactions"><button class="btn"><%= can('donations.collect') ? 'تسجيل التحصيل' : 'تسجيل بانتظار تأكيد المحاسب' %></button></div>
+</form>
+<% } %>
+</div>
+
+<div class="card"><h2>سجل المساهمات والتحصيلات</h2>
+<div class="tablewrap"><table class="t"><thead><tr><th>الإيصال</th><th>التاريخ</th><th>الشهر</th><th class="num">المبلغ</th><th>الطريقة</th><th>المرجع</th><th>الحالة</th><th>سجله</th></tr></thead><tbody>
+<% if (!contributions.length) { %><tr><td colspan="8" class="empty">لا توجد مساهمات</td></tr><% } %>
+<% contributions.forEach(d => { %><tr><td><a href="/donations/<%= d.id %>"><%= d.receipt_no %></a></td><td class="num"><%= d.donation_date %></td><td><%= U.periodLabel(d.period) %></td><td class="num"><%= fmt(d.amount) %></td><td><%= L.label('payout', d.payment_method) %></td><td class="ltr small"><%= d.reference || '' %></td><td><%- badge('donationStatus', d.status) %></td><td class="small"><%= d.by_name %></td></tr><% }) %>
+</tbody></table></div></div>
+<%- include('../partials/foot') %>

@@ -1,0 +1,19 @@
+<%- include('../partials/head', { title }) %>
+<div class="pagehead"><div><div class="crumbs"><a href="/sponsors">الكفلاء</a> / <%= isNew ? 'جديد' : s.sponsor_no %></div><h1><%= title %></h1></div></div>
+<form method="post" action="<%= isNew ? '/sponsors' : '/sponsors/' + s.id %>">
+<input type="hidden" name="_csrf" value="<%= csrf %>">
+<fieldset><legend>بيانات الكفيل</legend><div class="fields">
+  <div class="field"><label>الاسم كاملًا <span class="req">*</span></label><input name="full_name" required value="<%= old('full_name', s.full_name) %>"></div>
+  <div class="field"><label>رقم الجوال الأساسي <span class="req">*</span></label><input type="tel" name="phone" required dir="ltr" value="<%= old('phone', s.phone) %>"></div>
+  <div class="field"><label>رقم جوال بديل</label><input type="tel" name="phone_alt" dir="ltr" value="<%= old('phone_alt', s.phone_alt) %>"></div>
+  <div class="field"><label>نوع الكفالة</label><select name="sponsorship_type"><% L.options('sponsorType').forEach(o => { %><option value="<%= o.value %>" <%= old('sponsorship_type', s.sponsorship_type)===o.value?'selected':'' %>><%= o.text %></option><% }) %></select></div>
+  <div class="field"><label>المبلغ الشهري المتعهد به (<%= cur %>)</label><input name="monthly_pledge" inputmode="decimal" value="<%= old('monthly_pledge', s.monthly_pledge || '0') %>"><div class="hint">التعهد ليس مبلغًا محصلًا.</div></div>
+  <div class="field"><label>تاريخ بداية الكفالة</label><input type="date" name="start_date" value="<%= old('start_date', s.start_date) %>"></div>
+  <div class="field"><label>الحالة</label><select name="status"><% L.options('sponsorStatus').forEach(o => { %><option value="<%= o.value %>" <%= old('status', s.status)===o.value?'selected':'' %>><%= o.text %></option><% }) %></select></div>
+  <div class="field"><label>طريقة السداد</label><input name="payment_method" placeholder="تحويل شهري، نقدًا..." value="<%= old('payment_method', s.payment_method) %>"></div>
+  <div class="field wide"><label>ملاحظات إدارية</label><textarea name="notes"><%= old('notes', s.notes) %></textarea></div>
+</div></fieldset>
+<% if (isNew) { %><label class="check" style="margin-bottom:1rem"><input type="checkbox" name="confirm_duplicate" value="1"> تأكيد أنه كفيل مختلف إن وُجد كفيل بنفس الجوال</label><% } %>
+<div class="formactions"><button class="btn">حفظ</button><a class="btn sec" href="<%= isNew ? '/sponsors' : '/sponsors/' + s.id %>">إلغاء</a></div>
+</form>
+<%- include('../partials/foot') %>

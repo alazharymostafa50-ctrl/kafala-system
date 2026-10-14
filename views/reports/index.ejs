@@ -1,0 +1,69 @@
+<%- include('../partials/head', { title }) %>
+<% const qs = `period=${period}&type=${type}&level=${level}`; %>
+<div class="pagehead"><div><h1>مركز التقارير الشهرية</h1><p>اختر الشهر والسنة ونوع التقرير، ثم أنشئه وراجع الإجماليات قبل الطباعة أو التصدير.</p></div></div>
+
+<form class="card filters" method="get" action="/reports">
+  <input type="hidden" name="go" value="1">
+  <div class="field"><label>الشهر والسنة</label><input type="month" name="period" value="<%= period %>" required></div>
+  <div class="field grow"><label>نوع التقرير</label><select name="type">
+    <% Object.entries(types).forEach(([k, t]) => { if (!can(t.perm)) return; %><option value="<%= k %>" <%= type===k?'selected':'' %>><%= t.title %></option><% }) %></select></div>
+  <div class="field"><label>المستوى</label><select name="level"><option value="detailed">تفصيلي (للمحاسب)</option><option value="summary" <%= level==='summary'?'selected':'' %>>مختصر (للإدارة)</option></select></div>
+  <button class="btn"><%- icon('report') %> إنشاء التقرير</button>
+</form>
+
+<% if (report) { %>
+<div class="card">
+  <div class="cardhead">
+    <div><h2 style="margin:0"><%= report.title %> — <%= report.periodLabel %></h2><span class="small muted"><%= level === 'summary' ? 'مختصر للإدارة' : 'تفصيلي' %> · استُخرج <%= report.generatedAt.toISOString().slice(0,16).replace('T',' ') %> UTC</span></div>
+    <% if (can('reports.export')) { %>
+    <div class="btns">
+      <a class="btn gold" href="/reports/print?<%= qs %>&autoprint=1" target="_blank" rel="noopener"><%- icon('print') %> طباعة التقرير</a>
+      <a class="btn sec" href="/reports/export.pdf?<%= qs %>"><%- icon('download') %> تصدير PDF</a>
+      <a class="btn sec" href="/reports/export.xlsx?<%= qs %>"><%- icon('download') %> تصدير Excel</a>
+      <a class="btn sec" href="/reports/export.csv?<%= qs %>">CSV</a>
+      <a class="btn sec" href="/reports/print?<%= qs %>" target="_blank" rel="noopener">معاينة A4</a>
+    </div>
+    <% } %>
+  </div>
+</div>
+<% report.sections.forEach(s => { %>
+<div class="card"><h2><%= s.title %></h2>
+<% if (s.kind === 'kv') { %>
+  <table class="t"><tbody><% s.items.forEach(it => { %><tr style="<%= it.strong ? 'font-weight:700;background:var(--green-50)' : '' %>"><td style="width:40%"><%= it.label %></td><td class="num"><%= it.money ? fmt(U.fromCents(it.cents)) : it.text %></td><td class="small muted"><%= it.formula || '' %></td></tr><% }) %></tbody></table>
+<% } else { %>
+  <div class="tablewrap"><table class="t"><thead><tr><% s.columns.forEach(c => { %><th class="<%= c.money ? 'num' : '' %>"><%= c.label %></th><% }) %></tr></thead><tbody>
+  <% if (!s.rows.length) { %><tr><td colspan="<%= s.columns.length %>" class="empty">لا توجد بيانات لهذا الشهر</td></tr><% } %>
+  <% s.rows.forEach(row => { %><tr><% s.columns.forEach(c => { %><td class="<%= c.money ? 'num' : '' %>"><%= cell(c, row[c.key]) %></td><% }) %></tr><% }) %></tbody>
+  <% if (s.totals) { %><tfoot><tr><% s.columns.forEach(c => { %><td class="<%= c.money ? 'num' : '' %>"><%= cell(c, s.totals[c.key]) %></td><% }) %></tr></tfoot><% } %></table></div>
+<% } %>
+<% if (s.note) { %><p class="small muted" style="margin:.5rem 0 0"><%= s.note %></p><% } %>
+</div>
+<% }) %>
+<% } else { %>
+<div class="card"><p class="muted">اضغط «إنشاء التقرير» لعرض النتائج الفعلية للشهر المحدد.</p></div>
+<% } %>
+
+<div class="card" id="versions"><div class="cardhead"><h2>النسخ المحفوظة والمعتمدة — <%= types[type].title %> — <%= U.periodLabel(period) %></h2></div>
+<% if (can('reports.export')) { %>
+<form method="post" action="/reports/prepare" class="fields" data-confirm="حفظ نسخة ثابتة من التقرير (PDF + ملخص الأرقام) وإرسالها للاعتماد؟" style="margin-bottom:1rem">
+  <input type="hidden" name="_csrf" value="<%= csrf %>"><input type="hidden" name="period" value="<%= period %>"><input type="hidden" name="type" value="<%= type %>"><input type="hidden" name="level" value="<%= level %>">
+  <div class="field wide"><label>ملاحظات المحاسب (تُطبع في التقرير)</label><textarea name="accountant_notes" style="min-height:60px"></textarea></div>
+  <div class="field"><button class="btn">حفظ نسخة وإرسالها للاعتماد</button></div>
+</form>
+<% } %>
+<div class="tablewrap"><table class="t"><thead><tr><th>الإصدار</th><th>المستوى</th><th>الحالة</th><th>معد التقرير</th><th>تاريخ الإعداد</th><th>المعتمد</th><th>تاريخ الاعتماد</th><th>ملاحظات</th><th></th></tr></thead><tbody>
+<% if (!vers.length) { %><tr><td colspan="9" class="empty">لا توجد نسخ محفوظة لهذا التقرير</td></tr><% } %>
+<% vers.forEach(v => { const st = { pending: ['بانتظار الاعتماد','warning'], approved: ['معتمد','success'], superseded: ['مستبدل بإصدار أحدث','muted'], rejected: ['مرفوض','danger'] }[v.status]; %>
+<tr><td><b><%= v.version %></b></td><td><%= v.report_level === 'summary' ? 'مختصر' : 'تفصيلي' %></td><td><span class="badge <%= st[1] %>"><%= st[0] %></span></td><td><%= v.prepared_name %></td><td class="num"><%= v.prepared_at.toISOString().slice(0,16).replace('T',' ') %></td><td><%= v.status === 'rejected' ? '' : (v.approved_name || '—') %></td><td class="num"><%= v.approved_at && v.status !== 'rejected' ? v.approved_at.toISOString().slice(0,16).replace('T',' ') : '—' %></td>
+<td class="small"><%= v.supersede_reason || v.reject_reason || v.accountant_notes || '' %></td>
+<td class="actions"><a class="btn sm sec" href="/reports/saved/<%= v.id %>/pdf" target="_blank" rel="noopener">PDF</a>
+<% if (v.status === 'pending' && can('reports.approve')) { %>
+  <% if (sep && v.prepared_by === user.id) { %><span class="small muted">لا يعتمده معده</span><% } else { %>
+  <form method="post" action="/reports/<%= v.id %>/approve" class="inline" data-confirm="اعتماد هذا الإصدار؟ ستُحفظ نسخة PDF نهائية لا تُعدَّل."><input type="hidden" name="_csrf" value="<%= csrf %>"><input name="reason" placeholder="سبب الإصدار الجديد (إن وجدت نسخة معتمدة)" style="width:200px"><button class="btn sm">اعتماد</button></form>
+  <% } %>
+  <form method="post" action="/reports/<%= v.id %>/reject" class="inline"><input type="hidden" name="_csrf" value="<%= csrf %>"><input name="reason" required placeholder="سبب الرفض" style="width:120px"><button class="btn sm danger">رفض</button></form>
+<% } %></td></tr>
+<% }) %></tbody></table></div></div>
+
+<% if (recent.length) { %><div class="card"><h2>أحدث التقارير المحفوظة</h2><ul class="timeline"><% recent.forEach(r => { %><li><a href="/reports?period=<%= r.period %>&type=<%= r.report_type %>#versions"><%= types[r.report_type].title %> — <%= U.periodLabel(r.period) %></a> · إصدار <%= r.version %> · <%= r.status === 'approved' ? 'معتمد من ' + r.approved_name : 'بانتظار الاعتماد' %></li><% }) %></ul></div><% } %>
+<%- include('../partials/foot') %>

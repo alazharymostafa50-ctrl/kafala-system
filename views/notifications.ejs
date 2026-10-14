@@ -1,0 +1,18 @@
+<%- include('partials/head', { title }) %>
+<div class="pagehead"><div><h1>التنبيهات الداخلية</h1><p>تُنشأ تلقائيًا من قواعد الاستحقاق والمستندات والكفلاء، وتُغلق تلقائيًا عند زوال سببها.</p></div>
+<div class="btns"><a class="btn sec" href="/notifications<%= showResolved ? '' : '?resolved=1' %>"><%= showResolved ? 'التنبيهات المفتوحة' : 'التنبيهات المعالجة' %></a></div></div>
+<div class="tablewrap"><table class="t">
+<thead><tr><th>الأهمية</th><th>التنبيه</th><th>التفاصيل</th><th>التاريخ</th><th></th></tr></thead>
+<tbody>
+<% if (!rows.length) { %><tr><td colspan="5" class="empty">لا توجد تنبيهات</td></tr><% } %>
+<% rows.forEach(n => { %>
+<tr>
+  <td><span class="badge <%= n.severity === 'danger' ? 'danger' : n.severity === 'warning' ? 'warning' : 'info' %>"><%= n.severity === 'danger' ? 'عاجل' : n.severity === 'warning' ? 'تنبيه' : 'معلومة' %></span></td>
+  <td><% if (n.link) { %><a href="<%= n.link %>"><%= n.title %></a><% } else { %><%= n.title %><% } %></td>
+  <td class="small muted"><%= n.body %></td>
+  <td class="small num"><%= n.created_at.toISOString().slice(0,10) %></td>
+  <td class="actions"><% if (!showResolved) { %><form method="post" action="/notifications/<%= n.id %>/resolve" class="inline"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn sm sec">تمت المعالجة</button></form><% } else { %><span class="small muted"><%= n.resolver || 'تلقائي' %></span><% } %></td>
+</tr>
+<% }) %>
+</tbody></table></div>
+<%- include('partials/foot') %>

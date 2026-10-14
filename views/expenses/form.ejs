@@ -1,0 +1,19 @@
+<%- include('../partials/head', { title }) %>
+<div class="pagehead"><div><div class="crumbs"><a href="/expenses">المصروفات</a> / جديد</div><h1>تسجيل مصروف</h1></div></div>
+<form method="post" action="/expenses?_csrf=<%= csrf %>" enctype="multipart/form-data">
+<fieldset><legend>بيانات المصروف</legend><div class="fields">
+  <div class="field"><label>تاريخ العملية <span class="req">*</span></label><input type="date" name="expense_date" required value="<%= old('expense_date', e.expense_date) %>"></div>
+  <div class="field"><label>التصنيف <span class="req">*</span></label><select name="category_code" required><% cats.forEach(c => { %><option value="<%= c.code %>" <%= old('category_code')===c.code?'selected':'' %>><%= c.name %> (<%= c.allowed_funds.includes('orphans') ? 'يسمح بالصندوق المقيد' : 'الصندوق العام فقط' %>)</option><% }) %></select></div>
+  <div class="field"><label>الصندوق <span class="req">*</span></label><select name="fund_code"><option value="general">الصندوق العام</option><option value="orphans" <%= old('fund_code')==='orphans'?'selected':'' %>>صندوق كفالة الأيتام (مقيد)</option></select></div>
+  <div class="field"><label>المبلغ (<%= cur %>) <span class="req">*</span></label><input name="amount" inputmode="decimal" required value="<%= old('amount') %>"></div>
+  <div class="field wide"><label>الوصف <span class="req">*</span></label><input name="description" required maxlength="500" value="<%= old('description') %>"></div>
+  <div class="field"><label>الجهة المستفيدة</label><input name="payee" value="<%= old('payee') %>"></div>
+  <div class="field"><label>طريقة الدفع</label><select name="payment_method"><% ['نقدًا','تحويل بنكي','شيك','محفظة إلكترونية','أخرى'].forEach(m => { %><option <%= old('payment_method')===m?'selected':'' %>><%= m %></option><% }) %></select></div>
+  <div class="field"><label>رقم الفاتورة أو الإيصال</label><input name="invoice_no" dir="ltr" value="<%= old('invoice_no') %>"></div>
+  <div class="field"><label>الشهر المالي</label><input type="month" name="period" value="<%= old('period', e.period) %>"></div>
+  <div class="field"><label>المستند المؤيد</label><input type="file" name="file" accept=".pdf,.jpg,.jpeg,.png,.webp"></div>
+  <div class="field wide"><label>ملاحظات</label><textarea name="notes"><%= old('notes') %></textarea></div>
+</div></fieldset>
+<div class="formactions"><button class="btn" name="submit" value="1">حفظ وإرسال للاعتماد</button><button class="btn sec" name="submit" value="0">حفظ كمسودة</button><a class="btn sec" href="/expenses">إلغاء</a></div>
+</form>
+<%- include('../partials/foot') %>

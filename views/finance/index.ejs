@@ -1,0 +1,61 @@
+<%- include('../partials/head', { title }) %>
+<% const m = (c) => fmt(U.fromCents(c)); const t = sum.totals, ln = sum.lines; %>
+<div class="pagehead"><div><h1>الأرصدة والتسويات المالية</h1><p>دفتر أستاذ موحد بقيود غير قابلة للحذف. الرصيد = الافتتاحي + الوارد − الصادر.</p></div>
+<form method="get" class="btns"><input type="month" name="period" value="<%= period %>" style="width:170px"><button class="btn sec">عرض</button></form></div>
+<% if (periodState && periodState.status === 'closed') { %><div class="alert warning">الفترة المالية <%= U.periodLabel(period) %> مقفلة.</div><% } %>
+<div class="grid g2">
+<div class="card"><h2>ملخص <%= U.periodLabel(period) %> (<%= cur %>)</h2>
+<table class="t"><tbody>
+  <tr><td>الرصيد الافتتاحي (كل الصناديق)</td><td class="num"><b><%= m(t.opening) %></b></td></tr>
+  <tr><td>+ التبرعات المحصلة</td><td class="num"><%= m(ln.donationsIn) %></td></tr>
+  <tr><td>− عكس تبرعات</td><td class="num"><%= m(ln.donationReversals) %></td></tr>
+  <tr><td>− المبالغ المصروفة للأسر</td><td class="num"><%= m(ln.disbursedOut) %></td></tr>
+  <tr><td>+ عكس عمليات صرف</td><td class="num"><%= m(ln.disbursementReversals) %></td></tr>
+  <tr><td>− المصروفات المدفوعة</td><td class="num"><%= m(ln.expensesOut) %></td></tr>
+  <tr><td>+ عكس مصروفات</td><td class="num"><%= m(ln.expenseReversals) %></td></tr>
+  <tr><td>± التسويات المالية (وارد / صادر)</td><td class="num"><%= m(ln.adjustmentsIn) %> / <%= m(ln.adjustmentsOut) %></td></tr>
+</tbody><tfoot><tr><td>الرصيد الختامي وفق السجلات</td><td class="num"><%= m(t.closing) %></td></tr></tfoot></table>
+<p class="small muted">التحقق: <%= m(t.opening) %> + <%= m(t.in) %> − <%= m(t.out) %> = <%= m(t.closing) %></p>
+</div>
+<div class="card"><h2>الأرصدة حسب الصندوق</h2>
+<table class="t"><thead><tr><th>الصندوق</th><th class="num">افتتاحي</th><th class="num">وارد</th><th class="num">صادر</th><th class="num">ختامي</th></tr></thead><tbody>
+<% sum.funds.forEach(f => { %><tr><td><%= f.name %> <%- f.restricted ? '<span class="badge gold">مقيد</span>' : '' %></td><td class="num"><%= m(f.opening) %></td><td class="num"><%= m(f.in) %></td><td class="num"><%= m(f.out) %></td><td class="num"><b><%= m(f.closing) %></b></td></tr><% }) %>
+</tbody></table>
+<dl class="dl" style="margin-top:1rem">
+  <dt>الأموال المقيدة (نهاية الشهر)</dt><dd class="num" style="text-align:right"><%= m(sum.restrictedClosing) %></dd>
+  <dt>المستحقات المعتمدة غير المدفوعة</dt><dd class="num" style="text-align:right"><%= m(unpaid) %> <span class="muted small">(التزامات — لا تُخصم من الرصيد)</span></dd>
+  <dt>المتاح للصرف الآن — الكفالات</dt><dd class="num" style="text-align:right"><%= m(avail.orphans) %></dd>
+  <dt>المتاح للصرف الآن — العام</dt><dd class="num" style="text-align:right"><%= m(avail.general) %></dd>
+</dl>
+<% if (resRows.length) { %><h3 style="margin-top:1rem">مبالغ محجوزة لأسر معينة (تبرعات مخصصة)</h3><ul class="small"><% resRows.filter(r => r.cents > 0).forEach(r => { %><li><%= r.file_no %> — <%= r.family_name %>: <b class="num"><%= m(r.cents) %></b></li><% }) %></ul><% } %>
+</div></div>
+
+<% if (can('finance.adjust')) { %>
+<div class="card"><h2>تسجيل تسوية موثقة أو رصيد افتتاحي</h2><p class="small muted">لتصحيح خطأ مالي استخدم تسوية أو عكس العملية الأصلية؛ لا يمكن حذف أي قيد.</p>
+<form method="post" action="/finance/adjustments" data-confirm="تسجيل هذه التسوية في السجل المالي؟ لا يمكن حذفها لاحقًا."><input type="hidden" name="_csrf" value="<%= csrf %>">
+<div class="fields">
+  <div class="field"><label>النوع</label><select name="kind"><% L.options('adjKind').forEach(o => { %><option value="<%= o.value %>"><%= o.text %></option><% }) %></select></div>
+  <div class="field"><label>الصندوق</label><select name="fund_code"><option value="general">الصندوق العام</option><option value="orphans">صندوق كفالة الأيتام (مقيد)</option></select></div>
+  <div class="field"><label>الاتجاه</label><select name="direction"><option value="in">وارد (زيادة)</option><option value="out">صادر (نقص)</option></select></div>
+  <div class="field"><label>المبلغ</label><input name="amount" required inputmode="decimal"></div>
+  <div class="field"><label>التاريخ</label><input type="date" name="adj_date" required value="<%= U.todayISO() %>"></div>
+  <div class="field wide"><label>السبب والمرجع <span class="req">*</span></label><input name="reason" required></div>
+</div><div class="formactions"><button class="btn">تسجيل التسوية</button></div></form>
+<div class="btns" style="margin-top:1rem">
+<% if (!periodState || periodState.status !== 'closed') { %><form method="post" action="/finance/periods/<%= period %>/close" data-confirm="إقفال الفترة <%= U.periodLabel(period) %>؟ لن تُقبل أي عمليات بتاريخ داخلها."><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn sec">إقفال الفترة المالية <%= U.periodLabel(period) %></button></form><% } %>
+<% if (periodState && periodState.status === 'closed' && can('settings.manage')) { %><form method="post" action="/finance/periods/<%= period %>/reopen" class="btns"><input type="hidden" name="_csrf" value="<%= csrf %>"><input name="reason" required placeholder="سبب إعادة الفتح"><button class="btn warn">إعادة فتح الفترة</button></form><% } %>
+</div></div>
+<% } %>
+
+<% if (adjustments.length) { %><div class="card"><h2>تسويات الشهر</h2><table class="t"><thead><tr><th>التاريخ</th><th>النوع</th><th>الصندوق</th><th>الاتجاه</th><th class="num">المبلغ</th><th>السبب</th><th>سجلها</th></tr></thead><tbody>
+<% adjustments.forEach(a => { %><tr><td class="num"><%= a.adj_date %></td><td><%= L.label('adjKind', a.kind) %></td><td><%= a.fund_code === 'orphans' ? 'كفالة الأيتام' : 'العام' %></td><td><%- badge('direction', a.direction) %></td><td class="num"><%= fmt(a.amount) %></td><td><%= a.reason %></td><td class="small"><%= a.by_name %></td></tr><% }) %></tbody></table></div><% } %>
+
+<div class="card"><div class="cardhead"><h2>السجل المالي (دفتر الأستاذ) — <%= U.periodLabel(period) %></h2>
+<form method="get" class="btns"><input type="hidden" name="period" value="<%= period %>"><select name="fund" data-autosubmit><option value="">كل الصناديق</option><option value="general" <%= query.fund==='general'?'selected':'' %>>العام</option><option value="orphans" <%= query.fund==='orphans'?'selected':'' %>>كفالة الأيتام</option></select>
+<select name="source" data-autosubmit><option value="">كل الأنواع</option><% L.options('sourceType').forEach(o => { %><option value="<%= o.value %>" <%= query.source===o.value?'selected':'' %>><%= o.text %></option><% }) %></select></form></div>
+<div class="tablewrap"><table class="t"><thead><tr><th>#</th><th>التاريخ</th><th>الصندوق</th><th>النوع</th><th>الاتجاه</th><th class="num">المبلغ</th><th>الوصف</th><th>أسرة</th><th>بواسطة</th></tr></thead><tbody>
+<% if (!p.rows.length) { %><tr><td colspan="9" class="empty">لا توجد قيود في هذا الشهر</td></tr><% } %>
+<% p.rows.forEach(l => { %><tr><td><%= l.id %></td><td class="num"><%= l.entry_date %></td><td class="small"><%= l.fund_code === 'orphans' ? 'كفالة الأيتام' : 'العام' %></td><td class="small"><%= L.label('sourceType', l.source_type) %></td><td><%- badge('direction', l.direction) %></td><td class="num"><%= fmt(l.amount) %></td><td class="small"><%= l.description %></td><td class="small"><%= l.file_no || '' %></td><td class="small"><%= l.by_name || '' %></td></tr><% }) %>
+</tbody></table></div>
+<%- include('../partials/pager', { p }) %></div>
+<%- include('../partials/foot') %>

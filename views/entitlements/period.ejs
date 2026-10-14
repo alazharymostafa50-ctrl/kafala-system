@@ -1,0 +1,70 @@
+<%- include('../partials/head', { title }) %>
+<div class="pagehead"><div><div class="crumbs"><a href="/entitlements">الاستحقاقات</a> / <%= U.periodLabel(period) %></div><h1>متابعة الصرف — <%= U.periodLabel(period) %></h1>
+<p><%= run ? (run.status === 'open' ? 'الكشف مفتوح' : 'الكشف مقفل (يمكن صرف المتبقي فقط)') : 'لم يُنشأ كشف لهذا الشهر بعد' %></p></div>
+<div class="btns noprint">
+  <% if (can('reports.view')) { %><a class="btn gold" href="/reports?period=<%= period %>&type=disbursements"><%- icon('print') %> تقرير الصرف</a><% } %>
+  <% if (run && run.status === 'open' && can('entitlements.generate')) { %><form method="post" action="/entitlements/<%= period %>/close" class="inline" data-confirm="إقفال كشف <%= U.periodLabel(period) %>؟ لن يمكن تعديل المستحقات بعد الإقفال."><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn sec">إقفال الكشف</button></form><% } %>
+</div></div>
+<% if (!run) { %><div class="card"><p>لا يوجد كشف. <% if (can('entitlements.generate')) { %><a href="/entitlements">أنشئ كشف الاستحقاقات</a><% } %></p></div><% } else { %>
+<div class="kpis">
+  <div class="kpi"><div class="k">الأسر المستحقة</div><div class="v"><%= totals.families %></div></div>
+  <div class="kpi"><div class="k">إجمالي المستحق</div><div class="v num"><%= fmt(U.fromCents(totals.due)) %></div></div>
+  <div class="kpi ok"><div class="k">المصروف فعليًا</div><div class="v num"><%= fmt(U.fromCents(totals.paid)) %></div></div>
+  <div class="kpi bad"><div class="k">المتبقي</div><div class="v num"><%= fmt(U.fromCents(totals.remaining)) %></div></div>
+  <div class="kpi ok"><div class="k">استلموا بالكامل</div><div class="v"><%= totals.full %></div></div>
+  <div class="kpi warn"><div class="k">استلموا جزئيًا</div><div class="v"><%= totals.partial %></div></div>
+  <div class="kpi bad"><div class="k">لم يستلموا</div><div class="v"><%= totals.none %></div></div>
+  <div class="kpi gold"><div class="k">نسبة إنجاز الصرف</div><div class="v"><%= totals.pct %>%</div><div class="progress"><i style="width:<%= totals.pct %>%"></i></div></div>
+</div>
+<p class="small muted">المتاح للصرف الآن: صندوق كفالة الأيتام <b class="num"><%= fmt(U.fromCents(avail.orphans)) %></b> · الصندوق العام <b class="num"><%= fmt(U.fromCents(avail.general)) %></b> <%= cur %></p>
+
+<% if (pending.length) { %>
+<div class="card"><h2>عمليات صرف بانتظار الاعتماد</h2>
+<table class="t"><thead><tr><th>العملية</th><th>الأسرة</th><th class="num">المبلغ</th><th>سجلها</th><th></th></tr></thead><tbody>
+<% pending.forEach(d => { %><tr><td><%= d.disb_no %></td><td><%= d.file_no %> — <%= d.family_name %></td><td class="num"><%= fmt(d.amount) %></td><td><%= d.by_name %></td><td class="actions"><% if (can('disbursements.approve')) { %>
+<form method="post" action="/disbursements/<%= d.id %>/approve" class="inline"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn sm">اعتماد</button></form>
+<form method="post" action="/disbursements/<%= d.id %>/reject" class="inline"><input type="hidden" name="_csrf" value="<%= csrf %>"><input name="reason" required placeholder="سبب الرفض" style="width:140px"><button class="btn sm danger">رفض</button></form><% } %></td></tr><% }) %>
+</tbody></table></div>
+<% } %>
+
+<form class="filters noprint" method="get">
+  <div class="field grow"><label>بحث</label><input type="search" name="q" value="<%= query.q || '' %>" placeholder="رقم الملف أو الاسم"></div>
+  <div class="field"><label>حالة الصرف</label><select name="status"><option value="">الكل</option><% L.options('entStatus').forEach(o => { %><option value="<%= o.value %>" <%= query.status===o.value?'selected':'' %>><%= o.text %></option><% }) %></select></div>
+  <div class="field"><label class="check"><input type="checkbox" name="only" value="unpaid" <%= query.only==='unpaid'?'checked':'' %>> الأسر التي لم تستلم فقط</label></div>
+  <button class="btn sec">تصفية</button>
+  <a class="btn sec" href="?only=review">يحتاج مراجعة</a>
+</form>
+<div class="tablewrap"><table class="t">
+<thead><tr><th>الملف</th><th>الأسرة / ولي الأمر</th><th>المستحقون</th><th class="num">المستحق</th><th class="num">المصروف</th><th class="num">المتبقي</th><th>الحالة</th><th>آخر صرف</th><th>الطريقة / المرجع</th><th class="noprint"></th></tr></thead>
+<tbody>
+<% if (!rows.length) { %><tr><td colspan="10" class="empty">لا توجد سجلات مطابقة</td></tr><% } %>
+<% rows.forEach(e => { const rem = U.toCents(e.amount_due) - U.toCents(e.amount_paid); %>
+<tr id="e<%= e.id %>">
+  <td><a href="/entitlements/item/<%= e.id %>"><b><%= e.file_no %></b></a><%- e.needs_review ? ' <span class="badge warning" title="' + esc(e.status_reason) + '">مراجعة</span>' : '' %></td>
+  <td><%= e.family_name %><br><span class="small muted"><%= e.guardian_name %></span></td>
+  <td><%= e.eligible_count %></td><td class="num"><%= fmt(e.amount_due) %></td><td class="num"><%= fmt(e.amount_paid) %></td><td class="num"><b><%= fmt(U.fromCents(rem)) %></b></td>
+  <td><%- badge('entStatus', e.status) %></td><td class="num"><%= e.last_date || '—' %></td>
+  <td class="small"><%= (e.methods || '').split(',').filter(Boolean).map(m => L.label('payout', m)).join('، ') %> <span class="ltr"><%= e.refs || '' %></span></td>
+  <td class="noprint actions">
+  <% if (can('disbursements.create') && rem > 0 && !['cancelled','postponed','failed','pending_approval'].includes(e.status)) { %>
+    <details><summary class="btn sm">تسجيل الصرف</summary>
+    <form method="post" action="/entitlements/item/<%= e.id %>/disburse?_csrf=<%= csrf %>" enctype="multipart/form-data" style="min-width:260px;text-align:right;margin-top:.4rem" data-confirm="تسجيل صرف لـ <%= e.file_no %>؟ ستُسجل حركة مالية فعلية.">
+      <input type="hidden" name="idempotency_key" value="<%= newKey() %>">
+      <label>المبلغ</label><input name="amount" required inputmode="decimal" value="<%= U.fromCents(rem) %>">
+      <label>تاريخ الصرف</label><input type="date" name="date" required value="<%= U.todayISO() %>">
+      <label>طريقة الصرف</label><select name="method"><% ['cash','bank_transfer','wallet','cheque','other'].forEach(k => { %><option value="<%= k %>" <%= e.payout_method===k?'selected':'' %>><%= L.label('payout', k) %></option><% }) %></select>
+      <label>من صندوق</label><select name="fund"><option value="orphans">كفالة الأيتام (مقيد)</option><% if (fin.allow_general_fund_for_kafala) { %><option value="general">الصندوق العام</option><% } %></select>
+      <label>رقم مرجع التحويل أو الإيصال</label><input name="reference" dir="ltr">
+      <label>المستند المؤيد</label><input type="file" name="file" accept=".pdf,.jpg,.jpeg,.png,.webp">
+      <label>ملاحظات</label><input name="notes">
+      <button class="btn sm" style="margin-top:.5rem">حفظ الصرف</button>
+    </form></details>
+  <% } %>
+  </td>
+</tr>
+<% }) %>
+</tbody>
+<tfoot><tr><td colspan="3">الإجمالي (حسب التصفية)</td><td class="num"><%= fmt(U.fromCents(rows.reduce((a, r) => a + U.toCents(r.amount_due), 0))) %></td><td class="num"><%= fmt(U.fromCents(rows.reduce((a, r) => a + U.toCents(r.amount_paid), 0))) %></td><td class="num"><%= fmt(U.fromCents(rows.reduce((a, r) => a + U.toCents(r.amount_due) - U.toCents(r.amount_paid), 0))) %></td><td colspan="4"></td></tr></tfoot>
+</table></div>
+<% } %>
+<%- include('../partials/foot') %>

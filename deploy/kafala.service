@@ -1,0 +1,16 @@
+[Unit]
+Description=Kafala orphan sponsorship system
+After=network.target postgresql.service
+
+[Service]
+User=kafala
+WorkingDirectory=/opt/kafala
+EnvironmentFile=/opt/kafala/.env
+ExecStart=/usr/bin/node server.js
+Restart=always
+NoNewPrivileges=true
+ProtectSystem=full
+ReadWritePaths=/var/lib/kafala
+
+[Install]
+WantedBy=multi-user.target

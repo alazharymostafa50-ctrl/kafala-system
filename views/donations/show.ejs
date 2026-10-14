@@ -1,0 +1,38 @@
+<%- include('../partials/head', { title }) %>
+<div class="pagehead"><div><div class="crumbs"><a href="/donations">التبرعات</a> / <%= d.receipt_no %></div><h1>إيصال <%= d.receipt_no %> <%- badge('donationStatus', d.status) %></h1></div>
+<button class="btn sec noprint" data-print><%- icon('print') %> طباعة</button></div>
+<div class="grid g2">
+<div class="card"><h2>البيانات</h2><dl class="dl">
+  <dt>المتبرع</dt><dd><%= d.donor_name %></dd>
+  <dt>النوع</dt><dd><%= d.type_name %></dd>
+  <dt>الصندوق</dt><dd><%= d.fund_name %></dd>
+  <dt>المبلغ</dt><dd><b class="num"><%= fmt(d.amount) %></b> <%= cur %></dd>
+  <dt>تاريخ العملية</dt><dd><%= d.donation_date %></dd>
+  <dt>الشهر المخصص</dt><dd><%= U.periodLabel(d.period) %></dd>
+  <dt>طريقة الدفع</dt><dd><%= L.label('payout', d.payment_method) %> <span class="ltr"><%= d.reference || '' %></span></dd>
+  <% if (d.file_no) { %><dt>مخصص لأسرة</dt><dd><a href="/families/<%= d.family_id %>"><%= d.file_no %></a></dd><% } %>
+  <% if (d.sponsor_no) { %><dt>الكفيل</dt><dd><a href="/sponsors/<%= d.sponsor_id %>"><%= d.sponsor_no %> — <%= d.sponsor_name %></a></dd><% } %>
+  <dt>الغرض</dt><dd><%= d.purpose || '—' %></dd>
+  <dt>ملاحظات</dt><dd><%= d.notes || '—' %></dd>
+  <dt>سجله</dt><dd><%= d.created_name %> (<%= d.created_at.toISOString().slice(0,16).replace('T',' ') %>)</dd>
+  <% if (d.collected_name) { %><dt>أكد التحصيل</dt><dd><%= d.collected_name %></dd><% } %>
+  <% if (d.reversal_reason) { %><dt>سبب الإلغاء</dt><dd><%= d.reversal_reason %> — <%= d.reversed_name %></dd><% } %>
+</dl></div>
+<div>
+<% if (can('donations.collect') && ['pending','needs_settlement'].includes(d.status)) { %>
+<div class="card noprint"><h2>تأكيد التحصيل</h2>
+<form method="post" action="/donations/<%= d.id %>/collect" data-confirm="تأكيد استلام المبلغ فعليًا وتسجيله في الصندوق؟"><input type="hidden" name="_csrf" value="<%= csrf %>">
+<div class="field"><label>تاريخ الاستلام</label><input type="date" name="date" required value="<%= U.todayISO() %>" max="<%= U.todayISO() %>"></div><button class="btn" style="margin-top:.6rem">تأكيد التحصيل</button></form>
+<% if (d.status === 'pending') { %><form method="post" action="/donations/<%= d.id %>/settlement" style="margin-top:1rem"><input type="hidden" name="_csrf" value="<%= csrf %>"><input name="note" required placeholder="سبب الحاجة إلى تسوية"><button class="btn sm sec" style="margin-top:.4rem">يحتاج إلى تسوية</button></form><% } %>
+</div><% } %>
+<% if (can('donations.collect') && ['pending','needs_settlement','collected'].includes(d.status)) { %>
+<div class="card noprint"><h2>إلغاء بعملية عكس موثقة</h2>
+<form method="post" action="/donations/<%= d.id %>/reverse" data-confirm="إلغاء هذا التبرع؟ سيُسجل قيد عكسي ويبقى الأصل محفوظًا."><input type="hidden" name="_csrf" value="<%= csrf %>">
+<div class="field"><label>السبب <span class="req">*</span></label><input name="reason" required></div><button class="btn danger" style="margin-top:.6rem">إلغاء التبرع</button></form></div>
+<% } %>
+<div class="card"><h2>القيود المالية</h2>
+<table class="t"><thead><tr><th>#</th><th>التاريخ</th><th>الاتجاه</th><th class="num">المبلغ</th><th>الوصف</th></tr></thead><tbody>
+<% if (!ledger.length) { %><tr><td colspan="5" class="empty">لا يوجد قيد — التبرع غير محصل</td></tr><% } %>
+<% ledger.forEach(l => { %><tr><td><%= l.id %></td><td class="num"><%= l.entry_date %></td><td><%- badge('direction', l.direction) %></td><td class="num"><%= fmt(l.amount) %></td><td class="small"><%= l.description %></td></tr><% }) %></tbody></table></div>
+</div></div>
+<%- include('../partials/foot') %>

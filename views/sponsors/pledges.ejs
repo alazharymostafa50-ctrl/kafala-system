@@ -1,0 +1,20 @@
+<%- include('../partials/head', { title }) %>
+<% const sum = (k) => all.reduce((a, r) => a + U.toCents(r[k]), 0); %>
+<div class="pagehead"><div><div class="crumbs"><a href="/sponsors">الكفلاء</a> / التعهدات</div><h1>تعهدات الكفلاء — <%= U.periodLabel(period) %></h1><p>المتعهد به لا يُحتسب ضمن الأموال المحصلة إلا بعد تأكيد الاستلام.</p></div>
+<div class="btns">
+  <form method="get" class="btns"><input type="month" name="period" value="<%= period %>" style="width:170px"><button class="btn sec">عرض</button></form>
+  <% if (can('sponsors.edit')) { %><form method="post" action="/sponsors/pledges/generate" class="inline"><input type="hidden" name="_csrf" value="<%= csrf %>"><input type="hidden" name="period" value="<%= period %>"><button class="btn">إنشاء تعهدات الشهر</button></form><% } %>
+</div></div>
+<div class="kpis">
+  <div class="kpi"><div class="k">إجمالي المتعهد به</div><div class="v num"><%= fmt(U.fromCents(sum('pledged_amount'))) %></div></div>
+  <div class="kpi ok"><div class="k">إجمالي المحصل</div><div class="v num"><%= fmt(U.fromCents(sum('collected'))) %></div></div>
+  <div class="kpi bad"><div class="k">المتبقي</div><div class="v num"><%= fmt(U.fromCents(sum('remaining'))) %></div></div>
+  <div class="kpi warn"><div class="k">متأخرون / لم يسددوا</div><div class="v"><%= all.filter(r => ['late','unpaid'].includes(r.pstatus)).length %></div></div>
+</div>
+<form class="filters" method="get"><input type="hidden" name="period" value="<%= period %>">
+  <div class="field"><label>حالة السداد</label><select name="status" data-autosubmit><option value="">الكل</option><% L.options('pledgeStatus').forEach(o => { %><option value="<%= o.value %>" <%= query.status===o.value?'selected':'' %>><%= o.text %></option><% }) %></select></div></form>
+<div class="tablewrap"><table class="t"><thead><tr><th>الكفيل</th><th>الجوال</th><th class="num">المتعهد به</th><th class="num">المحصل</th><th class="num">المتبقي</th><th>آخر تحصيل</th><th>الحالة</th></tr></thead><tbody>
+<% if (!rows.length) { %><tr><td colspan="7" class="empty">لا توجد تعهدات لهذا الشهر</td></tr><% } %>
+<% rows.forEach(r => { %><tr><td><a href="/sponsors/<%= r.sponsor_id %>"><%= r.sponsor_no %> — <%= r.full_name %></a></td><td class="num"><%= r.phone %></td><td class="num"><%= fmt(r.pledged_amount) %></td><td class="num"><%= fmt(r.collected) %></td><td class="num"><%= fmt(r.remaining) %></td><td class="num"><%= r.last_collected || '—' %></td><td><%- badge('pledgeStatus', r.pstatus) %></td></tr><% }) %>
+</tbody></table></div>
+<%- include('../partials/foot') %>

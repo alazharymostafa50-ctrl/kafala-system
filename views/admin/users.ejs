@@ -1,0 +1,19 @@
+<%- include('../partials/head', { title }) %>
+<div class="pagehead"><div><h1>المستخدمون والأدوار</h1><p>حسابات الموظفين باسم مستخدم وكلمة مرور (بدون بريد إلكتروني). الصلاحيات تُطبق في الخادم على كل عملية.</p></div>
+<a class="btn" href="/admin/users/new"><%- icon('plus') %> إضافة موظف</a></div>
+<div class="tablewrap"><table class="t"><thead><tr><th>اسم المستخدم</th><th>الاسم</th><th>الأدوار</th><th>المصادقة الثنائية</th><th>آخر دخول</th><th>الحالة</th></tr></thead><tbody>
+<% users.forEach(u => { %><tr><td><a href="/admin/users/<%= u.id %>" class="ltr"><b><%= u.username %></b></a></td><td><%= u.full_name %></td><td class="small"><%= u.roles || 'بدون دور' %></td>
+<td><%- u.totp_enabled ? '<span class="badge success">مفعلة</span>' : '<span class="badge muted">غير مفعلة</span>' %></td><td class="num small"><%= u.last_login_at ? u.last_login_at.toISOString().slice(0,16).replace('T',' ') : '—' %></td>
+<td><%- !u.is_active ? '<span class="badge danger">موقوف</span>' : (u.locked_until && u.locked_until > new Date()) ? '<span class="badge warning">مقفل مؤقتًا</span>' : '<span class="badge success">نشط</span>' %></td></tr><% }) %>
+</tbody></table></div>
+
+<div class="card" style="margin-top:1.2rem"><div class="cardhead"><h2>الأدوار</h2></div>
+<div class="tablewrap"><table class="t"><thead><tr><th>الدور</th><th>الوصف</th><th>عدد الصلاحيات</th><th>المستخدمون</th><th></th></tr></thead><tbody>
+<% roles.forEach(r => { %><tr><td><b><%= r.name %></b></td><td class="small"><%= r.description %></td><td><%= r.perms %></td><td><%= r.users %></td><td><a class="btn sm sec" href="/admin/roles/<%= r.id %>">تخصيص الصلاحيات</a></td></tr><% }) %>
+</tbody></table></div>
+<form method="post" action="/admin/roles" class="fields" style="margin-top:1rem"><input type="hidden" name="_csrf" value="<%= csrf %>">
+  <div class="field"><label>دور جديد مخصص</label><input name="name" required placeholder="مثال: متطوع إدخال بيانات"></div>
+  <div class="field"><label>الوصف</label><input name="description"></div>
+  <div class="field" style="align-self:end"><button class="btn sec">إنشاء الدور</button></div>
+</form></div>
+<%- include('../partials/foot') %>

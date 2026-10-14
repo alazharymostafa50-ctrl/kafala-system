@@ -1,0 +1,29 @@
+<%- include('../partials/head', { title }) %>
+<div class="pagehead"><div><div class="crumbs"><a href="/families">الأسر</a> / <a href="/families/<%= f.id %>"><%= f.file_no %></a> / فرد</div><h1><%= title %></h1><p><%= f.family_name %></p></div></div>
+<form method="post" action="<%= isNew ? '/families/' + f.id + '/members' : '/members/' + m.id %>">
+<input type="hidden" name="_csrf" value="<%= csrf %>">
+<fieldset><legend>البيانات الأساسية</legend><div class="fields">
+  <div class="field"><label>الاسم الرباعي <span class="req">*</span></label><input name="full_name" required maxlength="150" value="<%= old('full_name', m.full_name) %>"></div>
+  <div class="field"><label>تاريخ الميلاد <span class="req">*</span></label><input type="date" id="birth_date" name="birth_date" required max="<%= U.todayISO() %>" value="<%= old('birth_date', m.birth_date) %>"><div class="hint" data-age-for="birth_date"></div></div>
+  <div class="field"><label>الجنس <span class="req">*</span></label><select name="gender" required><option value="">—</option><option value="male" <%= old('gender', m.gender)==='male'?'selected':'' %>>ذكر</option><option value="female" <%= old('gender', m.gender)==='female'?'selected':'' %>>أنثى</option></select></div>
+  <div class="field"><label>صلة القرابة <span class="req">*</span></label><input name="relation" required placeholder="ابن، ابنة..." value="<%= old('relation', m.relation) %>"></div>
+  <div class="field"><label class="check"><input type="checkbox" name="is_orphan" value="1" <%= (old('is_orphan', m.is_orphan ? '1' : '') === '1' || old('is_orphan', m.is_orphan) === true) ? 'checked' : '' %>> يتيم مشمول بالكفالة</label></div>
+  <% if (can('families.sensitive')) { %><div class="field"><label>رقم الهوية / الوثيقة</label><input name="national_id" dir="ltr" value="<%= old('national_id', m.national_id) %>"></div><% } %>
+</div></fieldset>
+<fieldset><legend>الدراسة</legend><div class="fields">
+  <div class="field"><label>الحالة الدراسية</label><select name="study_status"><% ['', 'لم يلتحق بعد', 'طالب مدرسة', 'طالب جامعي', 'منقطع عن الدراسة', 'متخرج'].forEach(s => { %><option <%= old('study_status', m.study_status || '')===s?'selected':'' %>><%= s %></option><% }) %></select></div>
+  <div class="field"><label>اسم المدرسة أو الجامعة</label><input name="school_name" value="<%= old('school_name', m.school_name) %>"></div>
+  <div class="field"><label>المرحلة الدراسية</label><input name="study_level" value="<%= old('study_level', m.study_level) %>"></div>
+</div></fieldset>
+<fieldset><legend>الكفالة</legend><div class="fields">
+  <div class="field"><label>تاريخ بداية الكفالة</label><input type="date" name="sponsorship_start" value="<%= old('sponsorship_start', m.sponsorship_start) %>"></div>
+  <div class="field"><label>المبلغ الشهري للفرد (<%= cur %>)</label><input name="monthly_amount" inputmode="decimal" value="<%= old('monthly_amount', m.monthly_amount || '0') %>"><div class="hint">يُستخدم إذا كانت الكفالة لكل مستفيد أو مختلطة (<%= L.label('calcMethod', f.calc_method) %>).</div></div>
+  <% if (isNew && can('eligibility.decide')) { %>
+  <div class="field"><label>حالة الاستحقاق الابتدائية</label><select name="eligibility_status"><% L.options('eligibility').forEach(o => { %><option value="<%= o.value %>" <%= o.value==='eligible'?'selected':'' %>><%= o.text %></option><% }) %></select></div>
+  <% } else if (isNew) { %><div class="field"><div class="alert info" style="margin:0">ستكون الحالة «قيد المراجعة» حتى يعتمدها المسؤول.</div></div><% } else { %>
+  <div class="field"><label>حالة الاستحقاق</label><div><%- badge('eligibility', m.eligibility_status) %> <span class="small muted">— تُغيَّر بقرار موثق من ملف الأسرة</span></div></div><% } %>
+  <div class="field wide"><label>ملاحظات</label><textarea name="notes"><%= old('notes', m.notes) %></textarea></div>
+</div></fieldset>
+<div class="formactions"><button class="btn">حفظ</button><a class="btn sec" href="/families/<%= f.id %>">إلغاء</a></div>
+</form>
+<%- include('../partials/foot') %>

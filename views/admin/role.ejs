@@ -1,0 +1,11 @@
+<%- include('../partials/head', { title }) %>
+<div class="pagehead"><div><div class="crumbs"><a href="/admin/users">المستخدمون والأدوار</a> / <%= role.name %></div><h1>صلاحيات: <%= role.name %></h1><p><%= role.description %></p></div></div>
+<form method="post" action="/admin/roles/<%= role.id %>" data-confirm="حفظ صلاحيات هذا الدور؟ ستسري فورًا."><input type="hidden" name="_csrf" value="<%= csrf %>">
+<% const groups = [...new Set(perms.map(p => p.grp))]; groups.forEach(g => { %>
+<fieldset><legend><%= g %></legend><div class="fields">
+<% perms.filter(p => p.grp === g).forEach(p => { %><label class="check"><input type="checkbox" name="perms" value="<%= p.code %>" <%= mine.has(p.code) ? 'checked' : '' %>> <span><%= p.name %><br><span class="small muted ltr"><%= p.code %></span></span></label><% }) %>
+</div></fieldset>
+<% }) %>
+<div class="formactions"><button class="btn">حفظ الصلاحيات</button><a class="btn sec" href="/admin/users">رجوع</a></div>
+</form>
+<%- include('../partials/foot') %>

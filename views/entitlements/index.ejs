@@ -1,0 +1,20 @@
+<%- include('../partials/head', { title }) %>
+<div class="pagehead"><div><h1>الاستحقاقات والصرف الشهري</h1><p>يُنشأ سجل استحقاق مستقل لكل أسرة نشطة لكل شهر، وفق طريقة الاحتساب وقرارات الاستحقاق المعتمدة.</p></div></div>
+<% if (can('entitlements.generate')) { %>
+<div class="card"><h2>إنشاء كشف الاستحقاقات</h2>
+<form method="post" action="/entitlements/generate" class="btns" data-confirm="إنشاء كشف الاستحقاقات للشهر المحدد؟ سيتم تحديث حالات الاستحقاق أولًا.">
+  <input type="hidden" name="_csrf" value="<%= csrf %>">
+  <div class="field"><label>الشهر والسنة</label><input type="month" name="period" required value="<%= period %>" style="width:190px"></div>
+  <div class="field"><label>الإجراء</label><select name="mode"><option value="new">إنشاء كشف جديد</option><option value="add_missing">إضافة الأسر غير المدرجة إلى كشف قائم (إجراء إداري)</option></select></div>
+  <button class="btn" style="align-self:flex-end">إنشاء كشف الاستحقاقات</button>
+</form>
+<p class="small muted" style="margin:.6rem 0 0">لا يمكن إنشاء كشف مكرر للشهر نفسه. الأسر غير النشطة والمستفيدون غير المستحقين يُستبعدون مع توثيق السبب في تفاصيل الاحتساب.</p>
+</div>
+<% } %>
+<div class="tablewrap"><table class="t"><thead><tr><th>الشهر</th><th>عدد الأسر</th><th class="num">المستحق</th><th class="num">المصروف</th><th class="num">المتبقي</th><th>الإنجاز</th><th>الحالة</th><th>أنشأه</th></tr></thead><tbody>
+<% if (!runs.length) { %><tr><td colspan="8" class="empty">لا توجد كشوف بعد</td></tr><% } %>
+<% runs.forEach(r => { const due = U.toCents(r.due), paid = U.toCents(r.paid); const pct = due ? Math.round(paid / due * 100) : 0; %>
+<tr><td><a href="/entitlements/<%= r.period %>"><b><%= U.periodLabel(r.period) %></b></a></td><td><%= r.families %></td><td class="num"><%= fmt(r.due) %></td><td class="num"><%= fmt(r.paid) %></td><td class="num"><%= fmt(U.fromCents(due - paid)) %></td>
+<td style="min-width:120px"><div class="progress"><i style="width:<%= pct %>%"></i></div><span class="small muted"><%= pct %>%</span></td><td><%= r.status === 'open' ? 'مفتوح' : 'مقفل' %></td><td class="small"><%= r.by_name %></td></tr>
+<% }) %></tbody></table></div>
+<%- include('../partials/foot') %>

@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title><%= r.title %> — <%= r.periodLabel %></title>
+<style>
+@font-face { font-family: 'CairoR'; font-weight: 400; src: url('<%= assets.fonts.ar400 %>') format('woff2'); unicode-range: U+0600-06FF, U+0750-077F, U+FB50-FDFF, U+FE70-FEFF, U+200C-200E; }
+@font-face { font-family: 'CairoR'; font-weight: 700; src: url('<%= assets.fonts.ar700 %>') format('woff2'); unicode-range: U+0600-06FF, U+0750-077F, U+FB50-FDFF, U+FE70-FEFF, U+200C-200E; }
+@font-face { font-family: 'CairoR'; font-weight: 400; src: url('<%= assets.fonts.la400 %>') format('woff2'); unicode-range: U+0000-00FF, U+2000-206F; }
+@font-face { font-family: 'CairoR'; font-weight: 700; src: url('<%= assets.fonts.la700 %>') format('woff2'); unicode-range: U+0000-00FF, U+2000-206F; }
+@page { size: A4 <%= r.sections.some(s => s.kind === 'table' && s.columns.length > 7) ? 'landscape' : 'portrait' %>; margin: 12mm 10mm 16mm; }
+<% if (!forPdf) { %>@page { @bottom-center { content: "صفحة " counter(page) " من " counter(pages); font-size: 8pt; color: #666; } }<% } %>
+* { box-sizing: border-box; }
+body { font-family: 'CairoR', 'Segoe UI', Tahoma, sans-serif; color: #1d2a25; font-size: 10.5pt; margin: 0; background: #fff; line-height: 1.5; }
+.sheet { max-width: 1050px; margin: 0 auto; padding: <%= forPdf ? '0' : '20px' %>; }
+.hdr { display: flex; align-items: center; gap: 14px; border-bottom: 3px solid #b8963e; padding-bottom: 10px; margin-bottom: 12px; }
+.hdr img { width: 70px; height: 70px; }
+.hdr .org b { font-size: 15pt; color: #054834; display: block; }
+.hdr .org span { font-size: 9pt; color: #555; }
+.hdr .ttl { margin-inline-start: auto; text-align: left; }
+.hdr .ttl h1 { margin: 0; font-size: 15pt; color: #054834; }
+.hdr .ttl div { font-size: 9pt; color: #555; }
+h2 { font-size: 11.5pt; color: #054834; margin: 14px 0 6px; border-inline-start: 4px solid #b8963e; padding-inline-start: 8px; break-after: avoid; }
+table { width: 100%; border-collapse: collapse; margin-bottom: 6px; font-size: 9pt; }
+thead { display: table-header-group; }
+tfoot { display: table-row-group; }
+tr { break-inside: avoid; page-break-inside: avoid; }
+th { background: #054834; color: #fff; padding: 5px 6px; text-align: right; font-weight: 700; border: 1px solid #054834; }
+td { padding: 4px 6px; border: 1px solid #d9dfdc; vertical-align: top; word-break: break-word; }
+tbody tr:nth-child(even) td { background: #f6f9f7; }
+tfoot td, tr.tot td { background: #f6efdc !important; font-weight: 700; border-top: 2px solid #b8963e; }
+.num { direction: ltr; unicode-bidi: plaintext; text-align: left; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.ltr { direction: ltr; unicode-bidi: plaintext; }
+.nw { white-space: nowrap; }
+table.kv td:first-child { width: 45%; }
+table.kv td.f { color: #666; font-size: 8pt; }
+table.kv tr.strong td { font-weight: 700; background: #e6f2ec !important; }
+.note { font-size: 8.5pt; color: #666; margin: 2px 0 8px; }
+.sign { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-top: 26px; break-inside: avoid; font-size: 9.5pt; }
+.sign div { border-top: 1px solid #999; padding-top: 6px; min-height: 52px; }
+.bar { position: sticky; top: 0; background: #054834; color: #fff; padding: 8px 14px; display: flex; gap: 8px; align-items: center; justify-content: space-between; font-size: 10pt; }
+.bar a, .bar button { background: #fff; color: #054834; border: 0; border-radius: 6px; padding: 5px 12px; font: inherit; cursor: pointer; text-decoration: none; font-weight: 700; }
+.stamp { border: 2px solid #2f8a57; color: #2f8a57; padding: 6px 10px; border-radius: 6px; display: inline-block; font-weight: 700; font-size: 9pt; }
+@media print { .bar { display: none; } .sheet { padding: 0; max-width: none; } }
+</style>
+</head>
+<body>
+<% if (!forPdf) { %>
+<div class="bar"><span>معاينة الطباعة — A4. تُخفى هذه الشريطة عند الطباعة.</span>
+<span><button type="button" id="printBtn">طباعة</button> <a href="/reports?period=<%= r.period %>&type=<%= r.type %>&level=<%= r.level %>">رجوع</a></span></div>
+<% } %>
+<div class="sheet">
+  <div class="hdr">
+    <% if (assets.logo) { %><img src="<%= assets.logo %>" alt=""><% } %>
+    <div class="org"><b><%= r.org.name %></b><span><%= r.org.subtitle || '' %></span><br><span><%= r.org.system_name %><%= r.org.phone ? ' — ' + r.org.phone : '' %><%= r.org.address ? ' — ' + r.org.address : '' %></span></div>
+    <div class="ttl"><h1><%= r.title %></h1><div>شهر: <b><%= r.periodLabel %></b> · <%= r.level === 'summary' ? 'تقرير مختصر للإدارة' : 'تقرير تفصيلي' %></div>
+      <div>تاريخ الاستخراج: <span class="ltr"><%= new Date(r.generatedAt).toISOString().slice(0,16).replace('T',' ') %> UTC</span> · العملة: <%= r.org.currency %></div>
+      <% if (approval) { %><div style="margin-top:4px"><span class="stamp"><%= approval.status === 'approved' ? 'نسخة معتمدة' : 'بانتظار الاعتماد' %> — إصدار <%= approval.version %></span></div><% } %>
+    </div>
+  </div>
+
+  <% r.sections.forEach(s => { %>
+    <h2><%= s.title %></h2>
+    <% if (s.kind === 'kv') { %>
+      <table class="kv"><tbody>
+      <% s.items.forEach(it => { %><tr class="<%= it.strong ? 'strong' : '' %>"><td><%= it.label %></td><td class="num"><%= it.money ? U.fmtMoney(U.fromCents(it.cents)) : it.text %></td><% if (r.level !== 'summary') { %><td class="f"><%= it.formula || '' %></td><% } %></tr><% }) %>
+      </tbody></table>
+    <% } else { %>
+      <table><thead><tr><% s.columns.forEach(c => { %><th class="<%= c.money ? 'num' : '' %>"><%= c.label %></th><% }) %></tr></thead>
+      <tbody>
+      <% if (!s.rows.length) { %><tr><td colspan="<%= s.columns.length %>" style="text-align:center;color:#888">لا توجد بيانات لهذا الشهر</td></tr><% } %>
+      <% s.rows.forEach(row => { %><tr><% s.columns.forEach(c => { %><td class="<%= c.money ? 'num' : c.ltr ? 'ltr nw' : ['id','date','birth','exp','last','no','file'].includes(c.key) ? 'nw' : '' %>"><%= cell(c, row[c.key]) %></td><% }) %></tr><% }) %>
+      </tbody>
+      <% if (s.totals) { %><tfoot><tr><% s.columns.forEach(c => { %><td class="<%= c.money ? 'num' : '' %>"><%= cell(c, s.totals[c.key]) %></td><% }) %></tr></tfoot><% } %>
+      </table>
+    <% } %>
+    <% if (s.note) { %><div class="note"><%= s.note %></div><% } %>
+  <% }) %>
+
+  <% if (approval && approval.accountant_notes) { %><h2>ملاحظات المحاسب</h2><p><%= approval.accountant_notes %></p><% } %>
+  <div class="sign">
+    <div>معد التقرير: <b><%= approval ? approval.prepared_name : (user ? user.full_name : '') %></b><br><span style="font-size:8pt;color:#666"><%= approval && approval.prepared_at ? new Date(approval.prepared_at).toISOString().slice(0,10) : '' %></span><br>التوقيع:</div>
+    <div>المعتمد: <b><%= approval && approval.approved_name ? approval.approved_name : '' %></b><br><span style="font-size:8pt;color:#666"><%= approval && approval.approved_at ? new Date(approval.approved_at).toISOString().slice(0,10) : '' %></span><br>التوقيع:</div>
+    <div>الختم:</div>
+  </div>
+  <p class="note" style="margin-top:14px">جميع الأرقام مستخرجة من سجلات النظام الفعلية. مرجع البيانات: آخر قيد مالي #<%= r.sourceRefs.ledger_max_id %> · قيود الشهر <%= r.sourceRefs.ledger_entries_in_period %> · سجلات الاستحقاق <%= r.sourceRefs.entitlements %>.</p>
+</div>
+<% if (!forPdf) { %><script src="/static/js/print.js"></script><% } %>
+</body>
+</html>

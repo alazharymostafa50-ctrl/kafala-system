@@ -1,0 +1,12 @@
+<div class="pager">
+  <span>إجمالي السجلات: <b><%= p.total %></b> — صفحة <%= p.page %> من <%= p.pages %></span>
+  <% if (p.pages > 1) { %>
+  <div class="pages">
+    <% if (p.page > 1) { %><a href="<%= p.qs(p.page - 1) %>">السابق</a><% } %>
+    <% for (let i = Math.max(1, p.page - 3); i <= Math.min(p.pages, p.page + 3); i++) { %>
+      <% if (i === p.page) { %><span class="cur"><%= i %></span><% } else { %><a href="<%= p.qs(i) %>"><%= i %></a><% } %>
+    <% } %>
+    <% if (p.page < p.pages) { %><a href="<%= p.qs(p.page + 1) %>">التالي</a><% } %>
+  </div>
+  <% } %>
+</div>

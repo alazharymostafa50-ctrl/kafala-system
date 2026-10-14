@@ -1,0 +1,24 @@
+<%- include('../partials/head', { title }) %>
+<div class="pagehead"><div><h1>التبرعات</h1><p>كل تبرع يُحتسب مرة واحدة فقط عند تأكيد تحصيله. مساهمات الكفلاء جزء من التبرعات وليست إضافة عليها.</p></div>
+<% if (can('donations.edit')) { %><a class="btn" href="/donations/new"><%- icon('plus') %> تسجيل تبرع</a><% } %></div>
+<div class="kpis">
+  <div class="kpi"><div class="k">إجمالي المسجل</div><div class="v num"><%= fmt(tot.registered) %></div></div>
+  <div class="kpi ok"><div class="k">إجمالي المحصل فعليًا</div><div class="v num"><%= fmt(tot.collected) %></div></div>
+  <div class="kpi gold"><div class="k">المحصل المخصص (مقيد)</div><div class="v num"><%= fmt(tot.restricted) %></div></div>
+  <div class="kpi bad"><div class="k">المتبقي غير المحصل</div><div class="v num"><%= fmt(tot.uncollected) %></div></div>
+</div>
+<form class="filters card" method="get">
+  <div class="field grow"><label>بحث</label><input type="search" name="q" value="<%= query.q || '' %>" placeholder="رقم الإيصال أو اسم المتبرع أو المرجع"></div>
+  <div class="field"><label>الشهر المخصص</label><input type="month" name="period" value="<%= query.period || '' %>"></div>
+  <div class="field"><label>النوع</label><select name="type"><option value="">الكل</option><% types.forEach(t => { %><option value="<%= t.code %>" <%= query.type===t.code?'selected':'' %>><%= t.name %></option><% }) %></select></div>
+  <div class="field"><label>الحالة</label><select name="status"><option value="">الكل</option><% L.options('donationStatus').forEach(o => { %><option value="<%= o.value %>" <%= query.status===o.value?'selected':'' %>><%= o.text %></option><% }) %></select></div>
+  <button class="btn sec">تصفية</button>
+</form>
+<div class="tablewrap"><table class="t">
+<thead><tr><th>الإيصال</th><th>التاريخ</th><th>المتبرع</th><th>النوع</th><th>الصندوق</th><th>الشهر</th><th class="num">المبلغ</th><th>الطريقة</th><th>مخصص لـ</th><th>الحالة</th></tr></thead>
+<tbody>
+<% if (!p.rows.length) { %><tr><td colspan="10" class="empty">لا توجد تبرعات</td></tr><% } %>
+<% p.rows.forEach(d => { %><tr><td><a href="/donations/<%= d.id %>"><b><%= d.receipt_no %></b></a></td><td class="num"><%= d.donation_date %></td><td><%= d.donor_name %></td><td class="small"><%= d.type_name %></td><td class="small"><%= d.fund_name %></td><td class="small"><%= U.periodLabel(d.period) %></td><td class="num"><%= fmt(d.amount) %></td><td class="small"><%= L.label('payout', d.payment_method) %></td><td class="small"><%= d.file_no || d.sponsor_no || 'عام' %></td><td><%- badge('donationStatus', d.status) %></td></tr><% }) %>
+</tbody></table></div>
+<%- include('../partials/pager', { p }) %>
+<%- include('../partials/foot') %>

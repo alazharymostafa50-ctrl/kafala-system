@@ -1,0 +1,52 @@
+<%- include('partials/head', { title }) %>
+<div class="pagehead">
+  <div><h1>لوحة التحكم</h1><p>مؤشرات <%= U.periodLabel(period) %> — محسوبة مباشرة من قاعدة البيانات</p></div>
+  <form method="get" class="btns noprint"><label class="muted small" for="period" style="margin:0">الشهر</label>
+    <input type="month" id="period" name="period" value="<%= period %>" style="width:170px"><button class="btn sec">عرض</button></form>
+</div>
+
+<div class="quick">
+  <% if (can('families.edit')) { %><a class="btn" href="/families/new"><%- icon('plus') %> إضافة أسرة</a><% } %>
+  <% if (can('sponsors.edit')) { %><a class="btn sec" href="/sponsors/new"><%- icon('sponsor') %> إضافة كفيل</a><% } %>
+  <% if (can('donations.edit')) { %><a class="btn sec" href="/donations/new"><%- icon('donation') %> تسجيل تبرع</a><% } %>
+  <% if (can('expenses.edit')) { %><a class="btn sec" href="/expenses/new"><%- icon('expense') %> تسجيل مصروف</a><% } %>
+  <% if (can('entitlements.view')) { %><a class="btn sec" href="/entitlements/<%= period %>"><%- icon('calendar') %> متابعة الصرف الشهري</a><% } %>
+  <% if (can('reports.view')) { %><a class="btn gold" href="/reports?period=<%= period %>&type=financial"><%- icon('print') %> طباعة التقرير الشهري</a><% } %>
+</div>
+
+<div class="section-title">المؤشرات الإدارية</div>
+<div class="kpis">
+  <a class="kpi" href="/families"><div class="k">إجمالي الأسر المسجلة</div><div class="v"><%= d.adm.families.total %></div></a>
+  <a class="kpi ok" href="/families?status=active"><div class="k">الأسر النشطة</div><div class="v"><%= d.adm.families.active %></div></a>
+  <a class="kpi bad" href="/families?status=suspended"><div class="k">الأسر الموقوفة مؤقتًا</div><div class="v"><%= d.adm.families.suspended %></div></a>
+  <a class="kpi warn" href="/families?status=under_review"><div class="k">أسر تحتاج إلى مراجعة</div><div class="v"><%= d.adm.families.review %></div></a>
+  <div class="kpi"><div class="k">إجمالي أفراد الأسر</div><div class="v"><%= d.adm.members.total %></div></div>
+  <div class="kpi ok"><div class="k">الأيتام المستحقون للكفالة</div><div class="v"><%= d.adm.members.eligible_orphans %></div></div>
+  <a class="kpi warn" href="/eligibility"><div class="k">مستفيدون يحتاجون مراجعة استحقاق</div><div class="v"><%= d.adm.members.needs_review %></div></a>
+  <a class="kpi gold" href="/sponsors?status=active"><div class="k">الكفلاء النشطون</div><div class="v"><%= d.adm.activeSponsors %></div></a>
+  <a class="kpi warn" href="/eligibility?tab=sponsor"><div class="k">أسر بلا كفيل نشط</div><div class="v"><%= d.adm.noSponsor %></div></a>
+  <a class="kpi bad" href="/eligibility?tab=documents"><div class="k">مستندات ناقصة أو منتهية</div><div class="v"><%= d.adm.docIssues %></div></a>
+</div>
+
+<% if (showFin) { %>
+<div class="section-title">المؤشرات المالية — <%= U.periodLabel(period) %> <span class="muted small">(<%= cur %>)</span></div>
+<div class="kpis">
+  <div class="kpi ok"><div class="k">التبرعات المحصلة خلال الشهر</div><div class="v num"><%= fmt(U.fromCents(d.don.total)) %></div></div>
+  <div class="kpi"><div class="k">منها مساهمات الكفلاء</div><div class="v num"><%= fmt(U.fromCents(d.don.sponsor)) %></div></div>
+  <div class="kpi gold"><div class="k">منها تبرعات مخصصة لكفالة الأيتام</div><div class="v num"><%= fmt(U.fromCents(d.don.restricted)) %></div></div>
+  <div class="kpi"><div class="k">المستحق للأسر خلال الشهر</div><div class="v num"><%= fmt(U.fromCents(d.ent.due)) %></div></div>
+  <div class="kpi ok"><div class="k">المصروف فعليًا للأسر</div><div class="v num"><%= fmt(U.fromCents(d.ent.paid)) %></div></div>
+  <div class="kpi bad"><div class="k">لم يُصرف بعد</div><div class="v num"><%= fmt(U.fromCents(d.ent.remaining)) %></div></div>
+  <div class="kpi warn"><div class="k">المصروفات الأخرى المدفوعة</div><div class="v num"><%= fmt(U.fromCents(d.exp)) %></div></div>
+  <div class="kpi gold"><div class="k">الرصيد المتاح وفق السجلات (الآن)</div><div class="v num"><%= fmt(U.fromCents(d.available)) %></div></div>
+  <a class="kpi ok" href="/entitlements/<%= period %>?status=paid"><div class="k">أسر استلمت بالكامل</div><div class="v"><%= d.ent.full %></div></a>
+  <a class="kpi warn" href="/entitlements/<%= period %>?status=partial"><div class="k">أسر استلمت جزئيًا</div><div class="v"><%= d.ent.partial %></div></a>
+  <a class="kpi bad" href="/entitlements/<%= period %>?only=unpaid"><div class="k">أسر لم تستلم</div><div class="v"><%= d.ent.none %></div></a>
+</div>
+<div class="card">
+  <div class="cardhead"><h2>التبرعات والمستحقات والصرف — آخر 12 شهرًا</h2></div>
+  <div class="chartbox"><canvas id="mainChart" data-chart="<%= JSON.stringify(chart) %>" aria-label="رسم بياني للتبرعات والمصروفات"></canvas></div>
+</div>
+<script src="/static/js/chart.umd.js"></script>
+<% } %>
+<%- include('partials/foot') %>

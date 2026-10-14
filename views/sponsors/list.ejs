@@ -1,0 +1,22 @@
+<%- include('../partials/head', { title }) %>
+<div class="pagehead"><div><h1>إدارة الكفلاء</h1><p>بيانات الكفلاء لا تتضمن أي بيانات حساسة عن الأسر أو الأطفال.</p></div>
+<div class="btns"><a class="btn sec" href="/sponsors/pledges">متابعة التعهدات الشهرية</a><% if (can('sponsors.edit')) { %><a class="btn" href="/sponsors/new"><%- icon('plus') %> إضافة كفيل</a><% } %></div></div>
+<% if (linkFamily) { %><div class="alert info">اختر الكفيل المراد ربطه بالأسرة <b><%= linkFamily.file_no %> — <%= linkFamily.family_name %></b>، ثم استخدم نموذج «ربط بأسرة» في صفحته.</div><% } %>
+<form class="filters card" method="get">
+  <% if (linkFamily) { %><input type="hidden" name="link_family" value="<%= linkFamily.id %>"><% } %>
+  <div class="field grow"><label>بحث</label><input type="search" name="q" value="<%= query.q || '' %>" placeholder="الاسم أو رقم الكفيل أو الجوال"></div>
+  <div class="field"><label>الحالة</label><select name="status"><option value="">الكل</option><% L.options('sponsorStatus').forEach(o => { %><option value="<%= o.value %>" <%= query.status===o.value?'selected':'' %>><%= o.text %></option><% }) %></select></div>
+  <button class="btn sec">بحث</button>
+</form>
+<div class="tablewrap"><table class="t">
+<thead><tr><th>رقم الكفيل</th><th>الاسم</th><th>الجوال</th><th>النوع</th><th class="num">التعهد الشهري</th><th>الأسر المرتبطة</th><th class="num">المخصص للأسر</th><th>الحالة</th><th></th></tr></thead>
+<tbody>
+<% if (!p.rows.length) { %><tr><td colspan="9" class="empty">لا يوجد كفلاء</td></tr><% } %>
+<% p.rows.forEach(s => { %>
+<tr><td><a href="/sponsors/<%= s.id %>"><b><%= s.sponsor_no %></b></a></td><td><%= s.full_name %></td><td class="num"><%= s.phone %></td><td><%= L.label('sponsorType', s.sponsorship_type) %></td>
+<td class="num"><%= fmt(s.monthly_pledge) %></td><td><%= s.families_n %></td><td class="num"><%= fmt(s.linked_amount) %></td><td><%- badge('sponsorStatus', s.status) %></td>
+<td><% if (linkFamily) { %><a class="btn sm" href="/sponsors/<%= s.id %>?family=<%= linkFamily.id %>#link">ربط</a><% } %></td></tr>
+<% }) %>
+</tbody></table></div>
+<%- include('../partials/pager', { p }) %>
+<%- include('../partials/foot') %>

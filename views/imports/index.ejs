@@ -1,0 +1,18 @@
+<%- include('../partials/head', { title }) %>
+<div class="pagehead"><div><h1>استيراد البيانات</h1><p>استيراد الأسر والأفراد والكفلاء من Excel أو CSV مع معاينة ومطابقة للأعمدة وتحقق من كل صف قبل الحفظ.</p></div></div>
+<div class="grid g2">
+<div class="card"><h2>1. نزّل القالب المناسب</h2>
+<div class="btns"><% Object.entries(labels).forEach(([k, l]) => { %><a class="btn sec" href="/import/template/<%= k %>.xlsx"><%- icon('download') %> قالب <%= l %></a><% }) %></div>
+<p class="small muted" style="margin-top:.8rem">ترتيب الاستيراد المقترح: الأسر أولًا، ثم الأفراد (يرتبطون برقم الملف أو جوال ولي الأمر)، ثم الكفلاء.</p></div>
+<div class="card"><h2>2. ارفع الملف</h2>
+<form method="post" action="/import?_csrf=<%= csrf %>" enctype="multipart/form-data">
+<div class="fields"><div class="field"><label>نوع البيانات</label><select name="import_type" required><% Object.entries(labels).forEach(([k, l]) => { %><option value="<%= k %>"><%= l %></option><% }) %></select></div>
+<div class="field"><label>الملف (xlsx أو csv)</label><input type="file" name="file" required accept=".xlsx,.csv"></div></div>
+<div class="formactions"><button class="btn"><%- icon('upload') %> رفع ومعاينة</button></div></form></div>
+</div>
+<div class="card"><h2>دفعات الاستيراد السابقة</h2>
+<table class="t"><thead><tr><th>#</th><th>النوع</th><th>الملف</th><th>الصفوف</th><th>الحالة</th><th>النتيجة</th><th>المستخدم</th><th>التاريخ</th></tr></thead><tbody>
+<% if (!batches.length) { %><tr><td colspan="8" class="empty">لا توجد دفعات</td></tr><% } %>
+<% batches.forEach(b => { %><tr><td><a href="/import/<%= b.id %>"><%= b.id %></a></td><td><%= labels[b.import_type] %></td><td class="small"><%= b.file_name %></td><td><%= b.n %></td><td><%= ({uploaded:'بانتظار التأكيد',completed:'مكتمل',cancelled:'ملغى'})[b.status] %></td><td class="small"><%= b.result ? `مستورد ${b.result.imported} / فاشل ${b.result.failed}` : '—' %></td><td class="small"><%= b.full_name %></td><td class="num small"><%= b.created_at.toISOString().slice(0,16).replace('T',' ') %></td></tr><% }) %>
+</tbody></table></div>
+<%- include('../partials/foot') %>

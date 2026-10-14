@@ -1,0 +1,121 @@
+<%- include('../partials/head', { title }) %>
+<% const g = f.guardian; %>
+<div class="pagehead">
+  <div><div class="crumbs"><a href="/families">الأسر</a> / <%= f.file_no %></div>
+    <h1><%= f.family_name %> <%- badge('familyStatus', f.status) %></h1>
+    <p>رقم الملف <b><%= f.file_no %></b> · فُتح في <%= f.opened_on %> · <%= L.label('calcMethod', f.calc_method) %></p></div>
+  <div class="btns">
+    <% if (can('families.edit')) { %><a class="btn sec" href="/families/<%= f.id %>/edit"><%- icon('edit') %> تعديل</a>
+    <a class="btn" href="/families/<%= f.id %>/members/new"><%- icon('plus') %> إضافة فرد</a><% } %>
+    <% if (can('documents.view') || can('documents.upload')) { %><a class="btn sec" href="/families/<%= f.id %>/documents"><%- icon('doc') %> المستندات</a><% } %>
+  </div>
+</div>
+
+<% if (notes.length) { %><div class="alert warning"><b>تنبيهات مفتوحة:</b><ul style="margin:.3rem 0 0;padding-inline-start:1.2rem"><% notes.forEach(n => { %><li><%= n.title %></li><% }) %></ul></div><% } %>
+
+<div class="grid g2">
+  <div class="card"><h2>بيانات الأسرة</h2><dl class="dl">
+    <dt>العنوان</dt><dd><%= [f.address, f.district, f.city].filter(Boolean).join('، ') || '—' %></dd>
+    <dt>قيمة الكفالة الأساسية</dt><dd><%- money(f.monthly_amount) %> <%= cur %></dd>
+    <dt>عدد الأفراد</dt><dd><%= members.length %> (الأيتام: <%= members.filter(m => m.is_orphan).length %>، المستحقون حاليًا: <%= members.filter(m => ['eligible','eligible_university'].includes(m.eligibility_status)).length %>)</dd>
+    <dt>آخر مراجعة</dt><dd><%= f.last_review_on || '—' %></dd>
+    <dt>الموظف المسؤول</dt><dd><%= f.responsible_name || '—' %></dd>
+    <% if (sens && f.confidential_notes) { %><dt>ملاحظات سرية</dt><dd><%= f.confidential_notes %></dd><% } %>
+  </dl></div>
+  <div class="card"><h2>ولي الأمر</h2><dl class="dl">
+    <dt>الاسم</dt><dd><%= g.full_name %> <span class="muted">(<%= g.relation || '—' %>)</span></dd>
+    <dt>الجوال</dt><dd class="num" style="text-align:right"><%= g.phone %><%= g.phone_alt ? ' / ' + g.phone_alt : '' %></dd>
+    <dt>رقم الهوية</dt><dd class="ltr"><%= g.national_id || '—' %></dd>
+    <dt>وسيلة الاستلام</dt><dd><%= L.label('payout', g.payout_method) %> <%= g.bank_name ? '— ' + g.bank_name : '' %></dd>
+    <dt>IBAN / الحساب</dt><dd class="ltr"><%= g.iban || '—' %></dd>
+    <dt>آخر تحديث</dt><dd><%= g.updated_at ? g.updated_at.toISOString().slice(0,10) : '—' %></dd>
+  </dl></div>
+</div>
+
+<div class="card" id="members">
+  <div class="cardhead"><h2>أفراد الأسرة والأيتام</h2></div>
+  <div class="tablewrap"><table class="t">
+  <thead><tr><th>رقم المستفيد</th><th>الاسم</th><th>الجنس</th><th>تاريخ الميلاد</th><th>العمر</th><th>الصلة</th><th>الدراسة</th><th>الزواج</th><th>المبلغ الفردي</th><th>الاستحقاق</th><th></th></tr></thead>
+  <tbody>
+  <% if (!members.length) { %><tr><td colspan="11" class="empty">لم يُسجل أي فرد بعد</td></tr><% } %>
+  <% members.forEach(m => { %>
+  <tr id="m<%= m.id %>">
+    <td><%= m.member_no %></td><td><b><%= m.full_name %></b><%= m.is_orphan ? '' : ' (غير يتيم)' %></td>
+    <td><%= L.label('gender', m.gender) %></td><td class="num"><%= m.birth_date %></td><td><b><%= m.age %></b></td>
+    <td><%= m.relation %></td><td class="small"><%= [m.study_status, m.study_level, m.school_name].filter(Boolean).join(' — ') || '—' %></td>
+    <td class="small"><%= L.label('marital', m.marital_status) %><%= m.marriage_date ? ' (' + m.marriage_date + ')' : '' %></td>
+    <td><%- money(m.monthly_amount) %></td>
+    <td><%- badge('eligibility', m.eligibility_status) %></td>
+    <td class="actions">
+      <a class="btn sm sec" href="/members/<%= m.id %>/history">السجل</a>
+      <% if (can('families.edit')) { %><a class="btn sm sec" href="/members/<%= m.id %>/edit">تعديل</a><% } %>
+    </td>
+  </tr>
+  <% if (can('eligibility.decide') || (can('families.edit') && m.gender === 'female' && m.marital_status !== 'married')) { %>
+  <tr><td colspan="11" style="background:#fbfcfb">
+    <details><summary class="small" style="cursor:pointer;color:var(--green-700)">إجراءات الاستحقاق لـ <%= m.full_name %></summary>
+    <div class="grid g2" style="margin-top:.6rem">
+    <% if (can('eligibility.decide')) { %>
+      <form method="post" action="/members/<%= m.id %>/decision" data-confirm="تسجيل قرار استحقاق جديد لـ <%= m.full_name %>؟ سيُحفظ في السجل التاريخي ولا يمكن حذفه.">
+        <input type="hidden" name="_csrf" value="<%= csrf %>">
+        <div class="fields">
+          <div class="field"><label>الحالة الجديدة</label><select name="new_status" required><% L.options('eligibility').forEach(o => { %><option value="<%= o.value %>" <%= o.value===m.eligibility_status?'selected':'' %>><%= o.text %></option><% }) %></select></div>
+          <div class="field"><label>تاريخ السريان</label><input type="date" name="effective_from" value="<%= U.todayISO() %>"></div>
+          <div class="field wide"><label>سبب القرار <span class="req">*</span></label><input name="reason" required maxlength="1000"></div>
+        </div>
+        <button class="btn sm" style="margin-top:.5rem">اعتماد القرار</button>
+      </form>
+    <% } %>
+    <% if (can('families.edit') && m.gender === 'female' && m.marital_status !== 'married') { %>
+      <form method="post" action="/members/<%= m.id %>/marriage">
+        <input type="hidden" name="_csrf" value="<%= csrf %>">
+        <div class="fields">
+          <div class="field"><label>تسجيل زواج — التاريخ</label><input type="date" name="marriage_date" required></div>
+          <div class="field"><label>تفاصيل</label><input name="details" maxlength="500"></div>
+        </div>
+        <p class="small muted">يُنشأ طلب مراجعة ولا يتوقف الاستحقاق إلا بقرار معتمد. ارفع «إثبات الزواج» من صفحة المستندات.</p>
+        <button class="btn sm warn">تسجيل الزواج وطلب المراجعة</button>
+      </form>
+    <% } %>
+    </div></details>
+  </td></tr>
+  <% } %>
+  <% }) %>
+  </tbody></table></div>
+  <% if (reviews.length) { %><div class="alert warning" style="margin-top:.8rem">طلبات مراجعة مفتوحة: <% reviews.forEach(r => { %><b><%= L.label('reviewType', r.review_type) %></b> — <%= r.full_name %> (<%= r.details %>) <% }) %> <a href="/eligibility?tab=reviews">فتح شاشة المراجعة</a></div><% } %>
+  <% if (missing.length) { %><div class="alert info" style="margin-top:.8rem">مستندات ناقصة: <%= missing.map(x => L.label('docType', x.doc_type) + ' — ' + x.owner).join('، ') %></div><% } %>
+</div>
+
+<% if (sponsors) { %>
+<div class="card"><div class="cardhead"><h2>الكفلاء المرتبطون</h2><% if (can('sponsors.edit')) { %><a class="btn sm sec" href="/sponsors?link_family=<%= f.id %>">ربط كفيل</a><% } %></div>
+<div class="tablewrap"><table class="t"><thead><tr><th>الكفيل</th><th>النوع</th><th>المبلغ الشهري</th><th>من</th><th>إلى</th><th>حالة العلاقة</th></tr></thead><tbody>
+<% if (!sponsors.length) { %><tr><td colspan="6" class="empty">لا يوجد كفيل مرتبط — الأسرة تحتاج إلى كفيل</td></tr><% } %>
+<% sponsors.forEach(s => { %><tr><td><a href="/sponsors/<%= s.sponsor_id %>"><%= s.sponsor_no %> — <%= s.full_name %></a> <%- s.sponsor_status!=='active' ? badge('sponsorStatus', s.sponsor_status) : '' %></td><td><%= L.label('sponsorType', s.sponsorship_type) %></td><td><%- money(s.monthly_amount) %></td><td><%= s.start_date %></td><td><%= s.end_date || '—' %></td><td><%- badge('linkStatus', s.status) %></td></tr><% }) %>
+</tbody></table></div></div>
+<% } %>
+
+<% if (ents) { %>
+<div class="card"><h2>سجل الاستحقاق والصرف</h2>
+<div class="tablewrap"><table class="t"><thead><tr><th>الشهر</th><th>المستحقون</th><th class="num">المستحق</th><th class="num">المصروف</th><th class="num">المتبقي</th><th>الحالة</th></tr></thead><tbody>
+<% if (!ents.length) { %><tr><td colspan="6" class="empty">لا توجد كشوف بعد</td></tr><% } %>
+<% ents.forEach(e => { %><tr><td><a href="/entitlements/<%= e.period %>?q=<%= f.file_no %>"><%= U.periodLabel(e.period) %></a></td><td><%= e.eligible_count %></td><td class="num"><%= fmt(e.amount_due) %></td><td class="num"><%= fmt(e.amount_paid) %></td><td class="num"><%= fmt(U.fromCents(U.toCents(e.amount_due)-U.toCents(e.amount_paid))) %></td><td><%- badge('entStatus', e.status) %></td></tr><% }) %>
+</tbody></table></div></div>
+<% } %>
+
+<div class="card"><h2>سجل قرارات الاستحقاق</h2>
+<ul class="timeline">
+<% if (!decisions.length) { %><li class="muted">لا توجد قرارات</li><% } %>
+<% decisions.forEach(d => { %><li><b><%= d.full_name %></b>: <%= d.old_status ? L.label('eligibility', d.old_status) + ' ← ' : '' %><b><%= L.label('eligibility', d.new_status) %></b>
+  — <%= d.reason %> <span class="muted small">(<%= d.kind === 'automatic' ? 'تلقائي' : d.kind === 'initial' ? 'ابتدائي' : 'قرار' %> · <%= d.by_name || 'النظام' %> · <%= d.decided_at.toISOString().slice(0,16).replace('T',' ') %> · العمر <%= d.age_at_decision %>)</span></li><% }) %>
+</ul></div>
+
+<% if (can('families.edit')) { %>
+<div class="card"><h2>حالة الملف</h2>
+<form method="post" action="/families/<%= f.id %>/status" class="fields" data-confirm="تغيير حالة ملف الأسرة؟ لن تُحذف أي سجلات صرف سابقة.">
+  <input type="hidden" name="_csrf" value="<%= csrf %>">
+  <div class="field"><label>الحالة الجديدة</label><select name="status"><% L.options('familyStatus').forEach(o => { %><option value="<%= o.value %>" <%= o.value===f.status?'selected':'' %>><%= o.text %></option><% }) %></select></div>
+  <div class="field" style="grid-column: span 2"><label>السبب <span class="req">*</span></label><input name="reason" required maxlength="500"></div>
+  <div class="field" style="align-self:end"><button class="btn sec">تحديث الحالة</button></div>
+</form></div>
+<% } %>
+<%- include('../partials/foot') %>

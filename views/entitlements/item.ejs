@@ -1,0 +1,57 @@
+<%- include('../partials/head', { title }) %>
+<% const rem = U.toCents(e.amount_due) - U.toCents(e.amount_paid); %>
+<div class="pagehead"><div><div class="crumbs"><a href="/entitlements/<%= e.period %>"><%= U.periodLabel(e.period) %></a> / <%= e.file_no %></div>
+<h1><%= e.family_name %> — <%= U.periodLabel(e.period) %> <%- badge('entStatus', e.status) %></h1>
+<p>المستحق <b class="num"><%= fmt(e.amount_due) %></b> · المصروف <b class="num"><%= fmt(e.amount_paid) %></b> · المتبقي <b class="num"><%= fmt(U.fromCents(rem)) %></b> <%= cur %></p></div>
+<a class="btn sec" href="/families/<%= e.family_id %>">ملف الأسرة</a></div>
+<% if (e.needs_review) { %><div class="alert warning"><%= e.status_reason %></div><% } else if (e.status_reason) { %><div class="alert info">سبب الحالة: <%= e.status_reason %></div><% } %>
+<div class="grid g2">
+<div class="card"><h2>طريقة الاحتساب</h2>
+<p><%= L.label('calcMethod', e.calc_method) %> · عدد المستحقين: <%= e.eligible_count %></p>
+<table class="t"><thead><tr><th>البند</th><th class="num">المبلغ</th></tr></thead><tbody>
+<% (e.calc_detail.lines || []).forEach(l => { %><tr><td><%= l.item %></td><td class="num"><%= fmt(l.amount) %></td></tr><% }) %>
+</tbody><tfoot><tr><td>المستحق</td><td class="num"><%= fmt(e.amount_due) %></td></tr></tfoot></table>
+<% if ((e.calc_detail.excluded || []).length) { %><p class="small muted" style="margin-top:.6rem">غير مشمولين: <%= e.calc_detail.excluded.map(x => x.name + ' (' + L.label('eligibility', x.status) + ')').join('، ') %></p><% } %>
+<% (e.calc_detail.amendments || []).forEach(a => { %><div class="alert info small">تعديل: <%= a.from %> ← <%= a.to %> — <%= a.reason %> (<%= a.by %>، <%= a.at.slice(0,10) %>)</div><% }) %>
+</div>
+<div>
+<% if (can('disbursements.create') && rem > 0 && !['cancelled','postponed','failed','pending_approval'].includes(e.status)) { %>
+<div class="card"><h2>تسجيل الصرف</h2>
+<form method="post" action="/entitlements/item/<%= e.id %>/disburse?_csrf=<%= csrf %>" enctype="multipart/form-data" data-confirm="تسجيل عملية الصرف؟ ستُسجل حركة مالية فعلية.">
+<input type="hidden" name="idempotency_key" value="<%= newKey %>"><input type="hidden" name="back" value="item">
+<div class="fields">
+  <div class="field"><label>الأسرة</label><input value="<%= e.file_no %> — <%= e.family_name %>" disabled></div>
+  <div class="field"><label>الشهر المستحق</label><input value="<%= U.periodLabel(e.period) %>" disabled></div>
+  <div class="field"><label>المبلغ المراد صرفه</label><input name="amount" required inputmode="decimal" value="<%= U.fromCents(rem) %>"></div>
+  <div class="field"><label>تاريخ الصرف</label><input type="date" name="date" required value="<%= U.todayISO() %>"></div>
+  <div class="field"><label>طريقة الصرف</label><select name="method"><% ['cash','bank_transfer','wallet','cheque','other'].forEach(k => { %><option value="<%= k %>"><%= L.label('payout', k) %></option><% }) %></select></div>
+  <div class="field"><label>الصندوق</label><select name="fund"><option value="orphans">كفالة الأيتام (مقيد)</option><option value="general">الصندوق العام</option></select></div>
+  <div class="field"><label>مرجع التحويل أو الإيصال</label><input name="reference" dir="ltr"></div>
+  <div class="field"><label>المستند المؤيد</label><input type="file" name="file" accept=".pdf,.jpg,.jpeg,.png,.webp"></div>
+  <div class="field"><label>الموظف المسجِّل</label><input value="<%= user.full_name %>" disabled></div>
+  <div class="field wide"><label>ملاحظات</label><input name="notes"></div>
+</div><div class="formactions"><button class="btn">حفظ الصرف</button></div></form></div>
+<% } %>
+<% if (can('entitlements.generate') && U.toCents(e.amount_paid) === 0) { %>
+<div class="card"><h2>تغيير حالة الصرف بقرار موثق</h2>
+<form method="post" action="/entitlements/item/<%= e.id %>/status" data-confirm="تغيير حالة الصرف لهذه الأسرة؟"><input type="hidden" name="_csrf" value="<%= csrf %>">
+<div class="fields"><div class="field"><label>الحالة</label><select name="status"><% ['not_paid','preparing','postponed','failed','cancelled'].forEach(s => { %><option value="<%= s %>" <%= e.status===s?'selected':'' %>><%= L.label('entStatus', s) %></option><% }) %></select></div>
+<div class="field"><label>السبب <span class="req">*</span></label><input name="reason" required></div></div>
+<div class="formactions"><button class="btn sec">تحديث</button></div></form></div>
+<% } %>
+<% if (can('entitlements.generate')) { %>
+<div class="card"><h2>تعديل المبلغ المستحق</h2><p class="small muted">قرار موثق؛ لا يقل عن المصروف. بعد إقفال الكشف يُستخدم قيد تسوية مالية بدلًا من ذلك.</p>
+<form method="post" action="/entitlements/item/<%= e.id %>/amend" data-confirm="تعديل المبلغ المستحق؟ سيُسجل التعديل وسببه."><input type="hidden" name="_csrf" value="<%= csrf %>">
+<div class="fields"><div class="field"><label>المبلغ الجديد</label><input name="amount_due" required inputmode="decimal" value="<%= e.amount_due %>"></div><div class="field"><label>السبب <span class="req">*</span></label><input name="reason" required></div></div>
+<div class="formactions"><button class="btn sec">تعديل</button></div></form></div>
+<% } %>
+</div></div>
+<div class="card"><h2>عمليات الصرف</h2>
+<div class="tablewrap"><table class="t"><thead><tr><th>العملية</th><th>التاريخ</th><th class="num">المبلغ</th><th>الطريقة</th><th>الصندوق</th><th>المرجع</th><th>الإيصال</th><th>سجلها</th><th>المعتمد</th><th>الحالة</th><th></th></tr></thead><tbody>
+<% if (!ds.length) { %><tr><td colspan="11" class="empty">لا توجد عمليات صرف</td></tr><% } %>
+<% ds.forEach(d => { %><tr><td><%= d.disb_no %></td><td class="num"><%= d.disb_date %></td><td class="num"><%= fmt(d.amount) %></td><td><%= L.label('payout', d.method) %></td><td><%= d.fund_code === 'orphans' ? 'كفالة الأيتام' : 'العام' %></td><td class="ltr small"><%= d.reference || '' %></td>
+<td><% if (d.document_id) { %><a href="/documents/<%= d.document_id %>/file" target="_blank" rel="noopener">عرض</a><% } %></td><td class="small"><%= d.by_name %></td><td class="small"><%= d.appr_name || '—' %></td><td><%- badge('disbStatus', d.status) %><%= d.reversal_reason ? ' — ' + d.reversal_reason : '' %></td>
+<td><% if (can('disbursements.approve') && d.status === 'paid') { %><form method="post" action="/disbursements/<%= d.id %>/reverse" data-confirm="عكس عملية الصرف؟ سيُسجل قيد عكسي ويزيد المتبقي."><input type="hidden" name="_csrf" value="<%= csrf %>"><input type="hidden" name="back" value="item"><input name="reason" required placeholder="سبب العكس" style="width:130px"><button class="btn sm danger">عكس</button></form><% } %></td></tr><% }) %>
+</tbody></table></div></div>
+<div class="card"><h2>سجل التغييرات</h2><ul class="timeline"><% if (!log.length) { %><li class="muted">لا يوجد</li><% } %><% log.forEach(a => { %><li><b><%= a.action %></b> — <%= a.username %> <span class="muted small"><%= a.at.toISOString().slice(0,16).replace('T',' ') %></span> <%= a.reason || '' %></li><% }) %></ul></div>
+<%- include('../partials/foot') %>

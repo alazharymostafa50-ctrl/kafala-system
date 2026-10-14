@@ -1,0 +1,14 @@
+<%- include('../partials/head', { title }) %>
+<div class="pagehead"><div><div class="crumbs"><a href="/families/<%= m.family_id %>"><%= m.file_no %></a> / <%= m.member_no %></div>
+<h1><%= m.full_name %> <%- badge('eligibility', m.eligibility_status) %></h1><p>العمر الحالي: <b><%= m.age %></b> سنة · مواليد <%= m.birth_date %></p></div>
+<a class="btn sec" href="/families/<%= m.family_id %>#m<%= m.id %>">العودة لملف الأسرة</a></div>
+<div class="card"><h2>قرارات وحالات الاستحقاق</h2>
+<div class="tablewrap"><table class="t"><thead><tr><th>التاريخ</th><th>من</th><th>إلى</th><th>العمر عند القرار</th><th>النوع</th><th>السبب</th><th>المعتمد</th><th>يسري من</th></tr></thead><tbody>
+<% decisions.forEach(d => { %><tr><td class="num"><%= d.decided_at.toISOString().slice(0,16).replace('T',' ') %></td><td><%= d.old_status ? L.label('eligibility', d.old_status) : '—' %></td><td><%- badge('eligibility', d.new_status) %></td><td><%= d.age_at_decision %></td><td><%= d.kind === 'automatic' ? 'تلقائي (قاعدة النظام)' : d.kind === 'initial' ? 'ابتدائي' : 'قرار إداري' %></td><td><%= d.reason %></td><td><%= d.by_name || 'النظام' %></td><td><%= d.effective_from %></td></tr><% }) %>
+</tbody></table></div></div>
+<div class="card"><h2>سجل تعديل البيانات</h2>
+<div class="tablewrap"><table class="t"><thead><tr><th>التاريخ</th><th>المستخدم</th><th>العملية</th><th>التغييرات</th></tr></thead><tbody>
+<% if (!changes.length) { %><tr><td colspan="4" class="empty">لا توجد تعديلات</td></tr><% } %>
+<% changes.forEach(a => { %><tr><td class="num"><%= a.at.toISOString().slice(0,16).replace('T',' ') %></td><td><%= a.username %></td><td><%= a.action %></td><td class="small"><% if (a.after_data) { Object.entries(a.after_data).forEach(([k, v]) => { if (typeof v === 'object') return; %><div><%= k %>: <span class="muted"><%= a.before_data && a.before_data[k] !== undefined ? a.before_data[k] + ' ← ' : '' %></span><%= v %></div><% }) } %></td></tr><% }) %>
+</tbody></table></div></div>
+<%- include('../partials/foot') %>

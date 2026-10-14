@@ -1,0 +1,6 @@
+node_modules/
+.env
+storage/
+*.kbak
+*.log
+.vercel

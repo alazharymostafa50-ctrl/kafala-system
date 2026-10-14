@@ -1,0 +1,12 @@
+<% if (typeof user !== 'undefined' && user && typeof csrf !== 'undefined') { %>
+<%- include('partials/head', { title }) %>
+<div class="card" style="max-width:640px;margin:2rem auto;text-align:center">
+  <h1><%= status === 403 ? 'غير مصرح' : status === 404 ? 'غير موجود' : 'تعذر إكمال الطلب' %></h1>
+  <p><%= msg %></p>
+  <a class="btn sec" href="/">العودة للوحة التحكم</a>
+</div>
+<%- include('partials/foot') %>
+<% } else { %>
+<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title><%= title %></title><link rel="stylesheet" href="/static/css/app.css"></head>
+<body><div class="authpage"><div class="authcard"><h1><%= title %></h1><p><%= msg %></p><a class="btn" href="/login">تسجيل الدخول</a></div></div></body></html>
+<% } %>

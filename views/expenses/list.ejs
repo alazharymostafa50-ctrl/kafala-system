@@ -1,0 +1,17 @@
+<%- include('../partials/head', { title }) %>
+<div class="pagehead"><div><h1>المصروفات</h1><p>الاعتماد منفصل عن الدفع. العملية المعتمدة لا تُحذف؛ تُلغى بقيد عكسي موثق.</p></div>
+<% if (can('expenses.edit')) { %><a class="btn" href="/expenses/new"><%- icon('plus') %> تسجيل مصروف</a><% } %></div>
+<div class="kpis"><div class="kpi ok"><div class="k">المدفوع (حسب التصفية)</div><div class="v num"><%= fmt(tot.paid) %></div></div><div class="kpi warn"><div class="k">بانتظار الاعتماد أو الدفع</div><div class="v num"><%= fmt(tot.pending) %></div></div></div>
+<form class="filters card" method="get">
+  <div class="field grow"><label>بحث</label><input type="search" name="q" value="<%= query.q || '' %>" placeholder="رقم العملية أو الوصف أو الجهة"></div>
+  <div class="field"><label>الشهر المالي</label><input type="month" name="period" value="<%= query.period || '' %>"></div>
+  <div class="field"><label>التصنيف</label><select name="category"><option value="">الكل</option><% cats.forEach(c => { %><option value="<%= c.code %>" <%= query.category===c.code?'selected':'' %>><%= c.name %></option><% }) %></select></div>
+  <div class="field"><label>الحالة</label><select name="status"><option value="">الكل</option><% L.options('expenseStatus').forEach(o => { %><option value="<%= o.value %>" <%= query.status===o.value?'selected':'' %>><%= o.text %></option><% }) %></select></div>
+  <button class="btn sec">تصفية</button>
+</form>
+<div class="tablewrap"><table class="t"><thead><tr><th>رقم العملية</th><th>التاريخ</th><th>التصنيف</th><th>الوصف</th><th>الجهة المستفيدة</th><th>الصندوق</th><th class="num">المبلغ</th><th>الحالة</th></tr></thead><tbody>
+<% if (!p.rows.length) { %><tr><td colspan="8" class="empty">لا توجد مصروفات</td></tr><% } %>
+<% p.rows.forEach(e => { %><tr><td><a href="/expenses/<%= e.id %>"><b><%= e.expense_no %></b></a></td><td class="num"><%= e.expense_date %></td><td class="small"><%= e.category_name %></td><td><%= e.description %></td><td class="small"><%= e.payee || '—' %></td><td class="small"><%= e.fund_name %></td><td class="num"><%= fmt(e.amount) %></td><td><%- badge('expenseStatus', e.status) %></td></tr><% }) %>
+</tbody></table></div>
+<%- include('../partials/pager', { p }) %>
+<%- include('../partials/foot') %>

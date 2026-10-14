@@ -1,0 +1,22 @@
+# تشغيل سريع: انسخ .env.example إلى .env واملأ القيم، ثم: docker compose up -d
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: kafala
+      POSTGRES_USER: kafala_app
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?اضبط DB_PASSWORD}
+    volumes: [pgdata:/var/lib/postgresql/data]
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on: [db]
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://kafala_app:${DB_PASSWORD}@db:5432/kafala
+    volumes: [storage:/data/storage]
+    ports: ["127.0.0.1:3000:3000"]
+volumes:
+  pgdata:
+  storage:

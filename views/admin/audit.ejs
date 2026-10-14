@@ -1,0 +1,19 @@
+<%- include('../partials/head', { title }) %>
+<div class="pagehead"><div><h1>سجل التدقيق</h1><p>سجل غير قابل للتعديل أو الحذف (محمي على مستوى قاعدة البيانات). لا يتضمن كلمات المرور أو محتوى المستندات.</p></div></div>
+<form class="filters card" method="get">
+  <div class="field"><label>المستخدم</label><input name="user" value="<%= query.user || '' %>"></div>
+  <div class="field"><label>الكيان</label><select name="entity"><option value="">الكل</option><% entities.forEach(e => { %><option <%= query.entity===e.entity?'selected':'' %>><%= e.entity %></option><% }) %></select></div>
+  <div class="field"><label>المعرف</label><input name="entity_id" value="<%= query.entity_id || '' %>"></div>
+  <div class="field"><label>العملية</label><input name="action" value="<%= query.action || '' %>"></div>
+  <div class="field"><label>من</label><input type="date" name="from" value="<%= query.from || '' %>"></div>
+  <div class="field"><label>إلى</label><input type="date" name="to" value="<%= query.to || '' %>"></div>
+  <button class="btn sec">تصفية</button>
+</form>
+<div class="tablewrap"><table class="t"><thead><tr><th>#</th><th>الوقت</th><th>المستخدم</th><th>العملية</th><th>الكيان</th><th>قبل</th><th>بعد</th><th>السبب</th><th>IP</th></tr></thead><tbody>
+<% if (!p.rows.length) { %><tr><td colspan="9" class="empty">لا توجد سجلات</td></tr><% } %>
+<% const show = (o) => o ? Object.entries(o).map(([k, v]) => k + ': ' + (typeof v === 'object' && v !== null ? JSON.stringify(v) : v)).join(' | ') : ''; %>
+<% p.rows.forEach(a => { %><tr><td><%= a.id %></td><td class="num small"><%= a.at.toISOString().slice(0,19).replace('T',' ') %></td><td><%= a.username %></td><td><b><%= a.action %></b></td><td class="small"><%= a.entity %> <%= a.entity_id || '' %></td>
+<td class="small" style="max-width:260px;word-break:break-word"><%= show(a.before_data).slice(0, 400) %></td><td class="small" style="max-width:260px;word-break:break-word"><%= show(a.after_data).slice(0, 400) %></td><td class="small"><%= a.reason || '' %></td><td class="small ltr"><%= a.ip || '' %></td></tr><% }) %>
+</tbody></table></div>
+<%- include('../partials/pager', { p }) %>
+<%- include('../partials/foot') %>
