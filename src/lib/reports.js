@@ -124,7 +124,7 @@ async function families(period, level) {
          WHERE fs.family_id=f.id AND fs.start_date <= $2 AND (fs.end_date IS NULL OR fs.end_date >= $3)) AS sponsors
      FROM families f LEFT JOIN guardians g ON g.family_id=f.id LEFT JOIN monthly_entitlements e ON e.family_id=f.id AND e.period=$1
      WHERE e.id IS NOT NULL OR f.status IN ('active','under_review','suspended')
-     ORDER BY f.file_no`, [period, U.periodEnd(period), U.periodStart(period)]);
+     ORDER BY ar_key(COALESCE(g.full_name, f.family_name)) COLLATE ar_sort, f.file_no`, [period, U.periodEnd(period), U.periodStart(period)]);
   let td = 0; let tp = 0; let tm = 0; let te = 0;
   const byStatus = {};
   const out = rows.map((r) => {
@@ -158,7 +158,7 @@ async function disbursements(period, level) {
        (SELECT string_agg(DISTINCT d.method, ',') FROM disbursements d WHERE d.entitlement_id=e.id AND d.status='paid') AS methods,
        (SELECT string_agg(COALESCE(d.reference, d.disb_no), '، ') FROM disbursements d WHERE d.entitlement_id=e.id AND d.status='paid') AS refs
      FROM monthly_entitlements e JOIN families f ON f.id=e.family_id LEFT JOIN guardians g ON g.family_id=f.id
-     WHERE e.period=$1 ORDER BY f.file_no`, [period]);
+     WHERE e.period=$1 ORDER BY ar_key(COALESCE(g.full_name, f.family_name)) COLLATE ar_sort, f.file_no`, [period]);
   const t = await stats.entitlementTotals(db, period);
   const out = rows.map((r) => ({
     file: r.file_no, name: `${r.family_name} / ${r.guardian || ''}`, kafala: U.toCents(r.kafala_amount), aid: U.toCents(r.aid_amount), due: U.toCents(r.amount_due), paid: U.toCents(r.amount_paid),

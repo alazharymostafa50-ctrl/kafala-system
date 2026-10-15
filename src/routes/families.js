@@ -65,7 +65,7 @@ router.get('/families', can('families.view'), h(async (req, res) => {
       (SELECT count(*) FROM family_members m WHERE m.family_id=f.id AND m.eligibility_status IN ('eligible','eligible_university'))::int AS eligible_count,
       (SELECT count(*) FROM family_sponsorships s WHERE s.family_id=f.id AND s.status='active')::int AS sponsors_count
     FROM families f LEFT JOIN guardians g ON g.family_id=f.id ${w.sql}`;
-  const p = await paged(req, base, w.params, 'f.id DESC');
+  const p = await paged(req, base, w.params, 'ar_key(COALESCE(g.full_name, f.family_name)) COLLATE ar_sort, f.file_no');
   const cities = await db.many(`SELECT DISTINCT city FROM families WHERE city IS NOT NULL ORDER BY city`);
   res.render('families/list', { title: 'إدارة الأسر', p, cities });
 }));

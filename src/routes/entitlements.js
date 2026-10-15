@@ -47,7 +47,7 @@ router.get('/entitlements/:period(\\d{4}-\\d{2})', can('entitlements.view'), h(a
        (SELECT string_agg(DISTINCT d.method, ',') FROM disbursements d WHERE d.entitlement_id=e.id AND d.status='paid') AS methods,
        (SELECT string_agg(d.reference, '، ') FROM disbursements d WHERE d.entitlement_id=e.id AND d.status='paid' AND d.reference IS NOT NULL) AS refs
      FROM monthly_entitlements e JOIN families f ON f.id=e.family_id LEFT JOIN guardians g ON g.family_id=f.id
-     WHERE ${where.join(' AND ')} ORDER BY f.file_no`, params);
+     WHERE ${where.join(' AND ')} ORDER BY ar_key(COALESCE(g.full_name, f.family_name)) COLLATE ar_sort, f.file_no`, params);
   const totals = await stats.entitlementTotals(db, period);
   const pending = await db.many(
     `SELECT d.*, f.file_no, f.family_name, u.full_name AS by_name FROM disbursements d JOIN families f ON f.id=d.family_id LEFT JOIN users u ON u.id=d.created_by
@@ -139,7 +139,7 @@ async function receiptRows({ period, ids = null, onlyUnpaid = false }) {
     `SELECT e.*, f.file_no, f.family_name, f.aid_note, g.full_name AS guardian_name, g.relation AS guardian_relation, g.phone AS guardian_phone,
        (SELECT max(d.disb_date) FROM disbursements d WHERE d.entitlement_id=e.id AND d.status='paid') AS last_date
      FROM monthly_entitlements e JOIN families f ON f.id=e.family_id LEFT JOIN guardians g ON g.family_id=f.id
-     WHERE ${where.join(' AND ')} ORDER BY f.file_no`, params);
+     WHERE ${where.join(' AND ')} ORDER BY ar_key(COALESCE(g.full_name, f.family_name)) COLLATE ar_sort, f.file_no`, params);
   const members = rows.length ? await db.many(
     `SELECT id, family_id, full_name FROM family_members WHERE family_id = ANY($1) ORDER BY birth_date`, [rows.map((r) => r.family_id)]) : [];
   for (const r of rows) {

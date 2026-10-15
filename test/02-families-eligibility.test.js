@@ -129,3 +129,19 @@ test('توقف أحد الأفراد لا يوقف بقية الأفراد', asy
   await mgr.post(`/members/${a.id}/decision`, { new_status: 'suspended', reason: 'تحقق' });
   assert.equal((await db.one('SELECT eligibility_status FROM family_members WHERE id=$1', [b.id])).eligibility_status, 'eligible');
 });
+
+test('الأسماء مرتبة أبجديًا (مع توحيد الهمزات) في قائمة الأسر والكشوف', async () => {
+  const { login, db } = require('./helpers');
+  const F = require('./fixtures');
+  const mgr = await login('manager');
+  const order = ['إبراهيم سعد ترتيب', 'أحمد علي ترتيب', 'آمنة حسن ترتيب', 'بسمة فؤاد ترتيب', 'زينب عادل ترتيب', 'محمد كمال ترتيب'];
+  for (const n of ['محمد كمال ترتيب', 'زينب عادل ترتيب', 'أحمد علي ترتيب', 'بسمة فؤاد ترتيب', 'إبراهيم سعد ترتيب', 'آمنة حسن ترتيب']) {
+    await F.family(mgr, { g_full_name: n });
+  }
+  const r = await mgr.get('/families?q=' + encodeURIComponent('ترتيب'));
+  const pos = order.map((n) => r.text.indexOf(n));
+  assert.ok(pos.every((p) => p > 0), 'كل الأسماء ظاهرة');
+  assert.deepEqual([...pos].sort((a, b) => a - b), pos, 'الترتيب أبجدي');
+  const k = await db.one(`SELECT ar_key('أحمد') = ar_key('احمد') AS same`);
+  assert.equal(k.same, true);
+});
