@@ -204,3 +204,27 @@ test('تنزيل نسخة احتياطية Excel من داخل المنصة (ل�
   const social = await login('social');
   assert.equal((await social.get('/admin/backup.xlsx')).status, 403);
 });
+
+test('البيانات التجريبية: إضافة مثال على كل حاجة ثم حذفها كلها بدون المساس بالبيانات الحقيقية', async () => {
+  const { login, db } = require('./helpers');
+  const admin = await login('admin');
+  const count = async () => db.one(`SELECT (SELECT count(*) FROM families)::int AS f, (SELECT count(*) FROM ledger_entries)::int AS l,
+    (SELECT count(*) FROM donations)::int AS d, (SELECT COALESCE(sum(CASE WHEN direction='in' THEN amount ELSE -amount END),0)::text AS bal FROM ledger_entries)`);
+  const before = await count();
+  const r = await admin.post('/admin/demo/seed');
+  assert.equal(r.headers.location, '/');
+  const mid = await count();
+  assert.equal(mid.f, before.f + 8); assert.ok(mid.l > before.l); assert.ok(mid.d > before.d);
+  assert.ok(await db.one(`SELECT 1 FROM monthly_entitlements e JOIN families f ON f.id=e.family_id WHERE f.is_demo AND e.status='paid' LIMIT 1`));
+  assert.ok(await db.one(`SELECT 1 FROM families WHERE is_demo AND support_type='aid'`));
+  const home = await admin.get('/'); assert.match(home.text, /بيانات تجريبية/);
+  // مرة تانية ممنوع
+  await admin.post('/admin/demo/seed');
+  assert.equal((await count()).f, mid.f);
+  await admin.post('/admin/demo/purge');
+  const after = await count();
+  assert.deepEqual(after, before, 'كل حاجة رجعت زي ما كانت');
+  // الحماية رجعت تشتغل بعد الحذف
+  const anyLedger = await db.one('SELECT id FROM ledger_entries LIMIT 1');
+  if (anyLedger) await assert.rejects(db.query('DELETE FROM ledger_entries WHERE id=$1', [anyLedger.id]), /غير قابل/);
+});

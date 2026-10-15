@@ -127,6 +127,7 @@ router.post('/admin/roles/:id(\\d+)', can('users.manage'), h(async (req, res) =>
 
 // ---------- الإعدادات ----------
 router.get('/admin/settings', can('settings.manage'), h(async (req, res) => {
+  res.locals.demo = await require('../lib/demo').status();
   const s = await settings.all();
   const types = await db.many('SELECT * FROM donation_types ORDER BY is_system DESC, name');
   const cats = await db.many('SELECT * FROM expense_categories ORDER BY name');
@@ -134,6 +135,18 @@ router.get('/admin/settings', can('settings.manage'), h(async (req, res) => {
 }));
 
 const logoUpload = memoryUpload(2).single('logo');
+// البيانات التجريبية: إضافة وحذف بالكامل
+router.post('/admin/demo/seed', can('settings.manage'), h(async (req, res) => {
+  const r = await require('../lib/demo').seed(req.user, req);
+  flash(req, 'success', `تمت إضافة بيانات تجريبية (${r.families} أسر وكفلاء وتبرعات ومصروف وكشف الشهر). كل حاجة تجريبية مكتوب جنبها «(تجريبي)».`);
+  res.redirect('/');
+}));
+router.post('/admin/demo/purge', can('settings.manage'), h(async (req, res) => {
+  const r = await require('../lib/demo').purge(req.user, req);
+  flash(req, 'success', `تم حذف كل البيانات التجريبية (${r.families} أسر وكل ما يخصها من حسابات وكشوف). بياناتك الحقيقية زي ما هي.`);
+  res.redirect('/admin/settings');
+}));
+
 // تنزيل نسخة احتياطية من البيانات (Excel) — لمدير النظام
 router.get('/admin/backup.xlsx', can('settings.manage'), h(async (req, res) => {
   const buf = await require('../lib/databackup').buildWorkbook(res.locals.org);

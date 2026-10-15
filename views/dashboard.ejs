@@ -5,6 +5,7 @@
   <form method="get" class="btns noprint"><label class="muted small" for="period" style="margin:0">تغيير الشهر</label>
     <input type="month" id="period" name="period" value="<%= period %>" style="width:170px"><button class="btn sec">عرض</button></form>
 </div>
+<% if (demo.exists) { %><div class="alert warning" style="display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap"><span>⚠️ النظام فيه <b>بيانات تجريبية</b> (مكتوب جنبها «تجريبي»). احذفها قبل ما تبدأ الشغل الحقيقي.</span><% if (can('settings.manage')) { %><a class="btn sm danger" href="/admin/settings#demo"><%- icon('trash') %> حذف البيانات التجريبية</a><% } %></div><% } %>
 
 <div class="tiles">
   <% if (can('families.edit')) { %><a class="tile" href="/families/new"><%- icon('plus') %>إضافة أسرة جديدة<small>تسجيل أسرة وولي الأمر</small></a><% } %>

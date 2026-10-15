@@ -5,6 +5,15 @@
 <p>نزّل نسخة من كل بيانات النظام (الأسر، المستفيدين، الكفالات، الصرف، التبرعات، المصروفات، الكشوف...) في ملف Excel واحد، واحفظه على جهاز الجمعية أو Google Drive. <b>يُنصح بتنزيلها مرة كل شهر على الأقل.</b></p>
 <a class="btn gold" href="/admin/backup.xlsx"><%- icon('doc') %> تنزيل نسخة احتياطية الآن</a>
 <p class="small muted" style="margin:.5rem 0 0">الملف لا يحتوي على صور المستندات المرفوعة ولا كلمات المرور.</p></div>
+<div class="card" id="demo"><h2>بيانات تجريبية للتدريب</h2>
+<% if (demo.exists) { %>
+  <div class="alert warning">فيه بيانات تجريبية في النظام دلوقتي: <%= demo.families %> أسر، <%= demo.sponsors %> كفلاء، <%= demo.donations %> تبرعات، <%= demo.expenses %> مصروف. <b>احذفها قبل ما تبدأ الشغل الحقيقي.</b></div>
+  <form method="post" action="/admin/demo/purge" data-confirm="هل أنت متأكد من حذف كل البيانات التجريبية؟ هتتمسح الأسر والكفلاء والتبرعات والصرف التجريبي نهائيًا، وبياناتك الحقيقية مش هتتأثر."><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn danger"><%- icon('trash') %> حذف كل البيانات التجريبية</button></form>
+<% } else { %>
+  <p>عايز تشوف النظام شغال قبل ما تدخل بياناتك؟ الزرار ده بيضيف مثال وهمي على كل حاجة: 8 أسر (كفالة وإعانة والاتنين) بأفرادها، 3 كفلاء، تبرعات، مصروف، وكشف الشهر الحالي وفيه ناس استلمت وناس لأ. كل اسم مكتوب جنبه «(تجريبي)»، وتقدر تمسحهم كلهم بضغطة زرار بعدين.</p>
+  <form method="post" action="/admin/demo/seed" data-confirm="إضافة بيانات تجريبية للنظام؟ تقدر تحذفها كلها بعدين من نفس المكان."><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn gold"><%- icon('plus') %> إضافة بيانات تجريبية</button></form>
+<% } %>
+</div>
 <div class="card"><h2>بيانات الجمعية والهوية</h2>
 <form method="post" action="/admin/settings/org?_csrf=<%= csrf %>" enctype="multipart/form-data">
 <div class="fields">

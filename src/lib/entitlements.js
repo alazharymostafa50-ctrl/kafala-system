@@ -47,7 +47,7 @@ async function computeFamily(c, fam, payingStatuses) {
  * mode = 'new'  : ينشئ الكشف (يرفض إن كان موجودًا)
  * mode = 'add_missing' : إجراء إداري صريح لإضافة الأسر النشطة غير المدرجة فقط
  */
-async function generate(c, period, user, { mode = 'new', req = null } = {}) {
+async function generate(c, period, user, { mode = 'new', req = null, familyIds = null } = {}) {
   if (!U.validPeriod(period)) throw new U.UserError('الشهر غير صالح');
   const cfg = await settings.get('eligibility');
   const paying = cfg.paying_statuses || ['eligible', 'eligible_university'];
@@ -60,9 +60,10 @@ async function generate(c, period, user, { mode = 'new', req = null } = {}) {
 
   const fams = await c.many(
     `SELECT f.id, f.file_no, f.family_name, f.calc_method, f.monthly_amount::text AS monthly_amount, f.aid_amount::text AS aid_amount, f.support_type FROM families f
-     WHERE f.status='active' AND f.opened_on <= $2
+     WHERE f.status='active' AND f.opened_on <= $2 AND f.deleted_at IS NULL
        AND NOT EXISTS (SELECT 1 FROM monthly_entitlements e WHERE e.family_id=f.id AND e.period=$1)
-     ORDER BY f.id`, [period, U.periodEnd(period)]);
+       AND ($3::int[] IS NULL OR f.id = ANY($3))
+     ORDER BY f.id`, [period, U.periodEnd(period), familyIds]);
   const result = { created: 0, skippedZero: [], flagged: 0, total: 0 };
   const prev = U.prevPeriod(period);
   for (const f of fams) {

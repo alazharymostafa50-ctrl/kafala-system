@@ -12,7 +12,8 @@ router.get('/', h(async (req, res) => {
   const d = await stats.dashboard(period);
   const chart = await stats.chartSeries(period);
   const showFin = req.perms.has('finance.view') || req.perms.has('donations.view');
-  res.render('dashboard', { title: 'لوحة التحكم', period, d, chart, showFin });
+  const demo = await require('../lib/demo').status();
+  res.render('dashboard', { title: 'لوحة التحكم', period, d, chart, showFin, demo });
 }));
 
 router.get('/notifications', h(async (req, res) => {
