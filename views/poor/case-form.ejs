@@ -26,7 +26,7 @@
 <fieldset class="money"><legend><span class="stepno">4</span> نوع العطاء <span class="req">*</span></legend>
   <div class="choice big3">
     <label class="choicebox"><input type="radio" name="give_type" value="cash" <%= gt==='cash'?'checked':'' %>> <span><b>نقدي شهري</b><small>مبلغ ثابت كل شهر</small></span></label>
-    <label class="choicebox"><input type="radio" name="give_type" value="in_kind" <%= gt==='in_kind'?'checked':'' %>> <span><b>عيني</b><small>شنط ولحوم وملابس وغيرها</small></span></label>
+    <label class="choicebox"><input type="radio" name="give_type" value="in_kind" <%= gt==='in_kind'?'checked':'' %>> <span><b>عيني</b><small>مواد غذائية وملابس وغيرها</small></span></label>
     <label class="choicebox"><input type="radio" name="give_type" value="both" <%= gt==='both'?'checked':'' %>> <span><b>نقدي وعيني</b><small>الاثنان معًا</small></span></label>
   </div>
   <div class="fields" style="margin-top:.7rem"><div class="field" data-show-when="give_type=cash|both"><label>المبلغ الشهري (<%= cur %>) <span class="req">*</span></label><input name="monthly_amount" inputmode="decimal" value="<%= old('monthly_amount', c.monthly_amount || '0') %>"></div></div>

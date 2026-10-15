@@ -54,7 +54,7 @@ test('قسم الفقراء: الصندوق المستقل والإعانة ال
 
 test('قسم الفقراء: كشف العطاء العيني ببيانات الجمعية', async () => {
   const mgr = await login('manager');
-  const r = await mgr.post('/poor/gifts', { title: 'شنطة رمضان', items: 'أرز، سكر، زيت', dist_date: U.todayISO(), quantity: 'شنطة واحدة', add_all: '1' });
+  const r = await mgr.post('/poor/gifts', { title: 'عطاء عيني', items: 'أرز، سكر، زيت', dist_date: U.todayISO(), quantity: 'حصة واحدة', add_all: '1' });
   const gid = idFrom(r);
   const items = await db.many('SELECT * FROM poor_distribution_items WHERE distribution_id=$1', [gid]);
   assert.equal(items.length, 2, 'العيني + النقدي والعيني');
@@ -62,7 +62,7 @@ test('قسم الفقراء: كشف العطاء العيني ببيانات ا�
   assert.ok((await db.one('SELECT received_at FROM poor_distribution_items WHERE id=$1', [items[0].id])).received_at);
   const k = await mgr.get(`/poor/gifts/${gid}/kashf`);
   assert.equal(k.status, 200);
-  assert.match(k.text, /كشف عطاء عيني/); assert.match(k.text, /شنطة رمضان/); assert.match(k.text, /الجمعية الشرعية/); assert.match(k.text, /التوقيع بالاستلام/);
+  assert.match(k.text, /كشف عطاء عيني/); assert.match(k.text, /أرز، سكر، زيت/); assert.match(k.text, /الجمعية الشرعية/); assert.match(k.text, /التوقيع بالاستلام/);
   // المراجع يرى ولا يعدل
   const aud = await login('auditor');
   assert.equal((await aud.get('/poor/cases')).status, 200);

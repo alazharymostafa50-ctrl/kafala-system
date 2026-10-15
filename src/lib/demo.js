@@ -98,9 +98,9 @@ async function seed(user, req) {
     await c.query(`INSERT INTO poor_donations (donor_name, kind, amount, donation_date, is_demo, created_by) VALUES ($1,'zakat',3000,$2,TRUE,$3), ($4,'sadaqa',1200,$2,TRUE,$3)`,
       ['متبرع بالزكاة' + TAG, today, user.id, 'فاعل خير' + TAG]);
     await c.query(`INSERT INTO poor_payments (case_id, period, amount, pay_date, created_by) SELECT id, $1, monthly_amount, $2, $3 FROM poor_cases WHERE id = ANY($4) AND give_type='cash'`, [period, today, user.id, ids]);
-    const g = await c.one(`INSERT INTO poor_distributions (title, items, dist_date, created_by) VALUES ($1,'أرز، سكر، زيت، مكرونة، شاي',$2,$3) RETURNING id`, ['شنطة رمضان' + TAG, today, user.id]);
+    const g = await c.one(`INSERT INTO poor_distributions (title, items, dist_date, created_by) VALUES ($1,'أرز، سكر، زيت، مكرونة، شاي',$2,$3) RETURNING id`, ['عطاء عيني' + TAG, today, user.id]);
     await c.query(`INSERT INTO poor_distribution_items (distribution_id, case_id, quantity, received_at)
-      SELECT $1, id, 'شنطة واحدة', CASE WHEN area='east' THEN now() END FROM poor_cases WHERE id = ANY($2) AND give_type IN ('in_kind','both')`, [g.id, ids]);
+      SELECT $1, id, 'حصة واحدة', CASE WHEN area='east' THEN now() END FROM poor_cases WHERE id = ANY($2) AND give_type IN ('in_kind','both')`, [g.id, ids]);
   });
   await audit.log(req || { user }, 'demo_seeded', 'system', '', { after: { families: famIds.length } });
   return { families: famIds.length };

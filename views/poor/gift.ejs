@@ -14,7 +14,7 @@
 <form method="post" action="/poor/gifts/<%= d.id %>/add" class="fields">
   <input type="hidden" name="_csrf" value="<%= csrf %>"><input type="hidden" name="add_all" value="1">
   <div class="field"><label>كل الحالات النشطة التي لها عطاء عيني في</label><select name="area"><option value="">كل المناطق</option><% L.options('area').forEach(o => { %><option value="<%= o.value %>"><%= o.text %></option><% }) %></select></div>
-  <div class="field"><label>الكمية</label><input name="quantity" placeholder="مثال: شنطة واحدة"></div>
+  <div class="field"><label>الكمية</label><input name="quantity" placeholder="مثال: حصة واحدة"></div>
   <div class="field"><button class="btn sec"><%- icon('plus') %> إضافة الكل</button></div>
 </form>
 <form method="post" action="/poor/gifts/<%= d.id %>/add" class="fields">

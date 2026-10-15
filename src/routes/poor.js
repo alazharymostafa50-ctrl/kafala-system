@@ -389,7 +389,7 @@ router.get('/poor/gifts/:id(\\d+)/kashf', can('poor.view'), h(async (req, res) =
   if (!rows.length) throw new U.UserError('الكشف فارغ. أضف الحالات أولًا.', 404);
   await sendPrint(req, res, 'poor/kashf', {
     rows, ref: d.dist_no, kind: 'gift', d, title: `كشف عطاء عيني — ${d.title}`,
-    docTitle: 'كشف عطاء عيني', docSub: d.title, backHref: `/poor/gifts/${d.id}`,
+    docTitle: 'كشف عطاء عيني', docSub: new Date(d.dist_date).toLocaleDateString('ar-EG', { day: 'numeric', month: 'long', year: 'numeric' }), backHref: `/poor/gifts/${d.id}`,
   }, `poor-gift-${d.dist_no}`);
 }));
 

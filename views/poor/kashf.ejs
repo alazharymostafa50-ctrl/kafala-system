@@ -57,7 +57,7 @@ table.k tfoot td { height: 8.5mm; font-weight: 700; background: #f3e9d6 !importa
   <div class="rule"></div>
   <div class="info">
     <% if (cash) { %><span>عدد الحالات: <b><%= rows.length %></b></span><span>العملة: <b><%= org.currency %></b></span>
-    <% } else { %><span>تاريخ التوزيع: <b><%= d.dist_date %></b></span><span>عدد الحالات: <b><%= rows.length %></b></span><% if (d.items) { %><span>المحتوى: <b><%= d.items %></b></span><% } %><% } %>
+    <% } else { %><% if (!/^عطاء عيني/.test(d.title)) { %><span>العطاء: <b><%= d.title %></b></span><% } %><span>تاريخ التوزيع: <b><%= d.dist_date %></b></span><span>عدد الحالات: <b><%= rows.length %></b></span><% if (d.items) { %><span>المحتوى: <b><%= d.items %></b></span><% } %><% } %>
     <span>صفحة <b><%= p + 1 %></b> من <b><%= pages.length %></b></span>
   </div>
   <table class="k">
