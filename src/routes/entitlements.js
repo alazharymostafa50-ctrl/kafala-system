@@ -200,7 +200,7 @@ async function saveStatement(period, rows, userId) {
   }
 }
 
-const perPage = (q) => { const n = parseInt(q, 10); return n >= 10 && n <= 25 ? n : 20; };
+const perPage = (q) => { const n = parseInt(q, 10); return n >= 10 && n <= 25 ? n : 15; };
 
 async function renderStatement(req, res, st) {
   const per = perPage(req.query.per);

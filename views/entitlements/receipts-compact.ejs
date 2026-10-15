@@ -5,37 +5,60 @@
   const pages = []; for (let i = 0; i < rows.length; i += per) pages.push(rows.slice(i, i + per));
   const sum = (list, k) => list.reduce((a, r) => a + C(r[k]), 0);
   const savedAt = new Date(st.created_at).toLocaleString('ar-EG', { timeZone: 'Africa/Cairo', dateStyle: 'medium', timeStyle: 'short' });
+  // السطر الأول: اسم الجمعية كاملًا، وما بعد «—» في الوصف (الفرع) يظهر في سطر مستقل
+  const sub = String(org.subtitle || '').split(/\s+[—–-]\s+/);
+  const fullName = [org.name, sub[0]].filter(Boolean).join(' ');
+  const branch = sub.slice(1).join(' — ');
 %>
 <style>
-.pg { break-after: page; page-break-after: always; }
+.pg { break-after: page; page-break-after: always; display: flex; flex-direction: column; }
 .pg:last-child { break-after: auto; page-break-after: auto; }
-.rh { display: flex; align-items: center; gap: 10px; border: 1.5px solid #054834; border-radius: 10px; padding: 6px 10px; margin-bottom: 6px; }
-.rh img { width: 54px; height: 54px; }
-.rh .o b { color: #054834; font-size: 12.5pt; display: block; }
-.rh .o span { font-size: 8.5pt; color: #555; }
-.rh .t { margin-inline-start: auto; text-align: left; }
-.rh .t h2 { margin: 0; font-size: 13pt; color: #054834; }
-.rh .t div { font-size: 8.5pt; color: #555; }
-table.k { width: 100%; border-collapse: collapse; font-size: 10pt; }
-table.k th { background: #054834; color: #fff; border: 1px solid #054834; padding: 3px 4px; font-weight: 700; }
-table.k th.sub { background: #e6f2ec; color: #054834; border-color: #b9c4bf; }
-table.k td { border: 1px solid #b9c4bf; padding: 2px 6px; height: 9.6mm; vertical-align: middle; }
-table.k td.c { text-align: center; }
-table.k td.n { text-align: center; color: #666; width: 8mm; }
-table.k td.ph { width: 26mm; text-align: center; }
-table.k td.mo { width: 18mm; text-align: center; }
-table.k td.due { width: 22mm; text-align: center; font-weight: 700; background: #fbf7ea; }
-table.k td.dt { width: 20mm; }
-table.k td.sig { width: 36mm; }
+
+/* الترويسة */
+.lh { display: grid; grid-template-columns: 21mm 1fr 42mm; align-items: center; gap: 3mm; padding-bottom: 3mm; }
+.lh img { width: 20mm; height: 20mm; object-fit: contain; }
+.lh .org { text-align: center; line-height: 1.55; }
+.lh .org .n { font-size: 12pt; font-weight: 700; color: #054834; white-space: nowrap; }
+.lh .org .r { font-size: 10pt; font-weight: 700; color: #8a6a1f; }
+.lh .org .b { font-size: 9pt; color: #555; }
+.lh .doc { border: 1.4px solid #054834; border-radius: 3mm; overflow: hidden; text-align: center; }
+.lh .doc .h { background: #054834; color: #fff; font-weight: 700; font-size: 9.5pt; padding: 1.6mm 2mm; }
+.lh .doc .m { font-size: 10pt; padding: 1.4mm 2mm; color: #054834; font-weight: 700; }
+.rule { height: 1.2mm; border-top: 0.6mm solid #054834; border-bottom: 0.3mm solid #b8963e; margin-bottom: 3mm; }
+
+/* شريط البيانات */
+.info { display: flex; justify-content: space-between; font-size: 9.5pt; color: #333; background: #f4f8f6; border: 1px solid #d5e2dc; border-radius: 2mm; padding: 1.6mm 4mm; margin-bottom: 3mm; }
+.info b { color: #054834; }
+
+/* الجدول */
+table.k { width: 100%; border-collapse: collapse; font-size: 10.5pt; table-layout: fixed; }
+table.k col.c-n { width: 8mm; } table.k col.c-ph { width: 27mm; } table.k col.c-mo { width: 19mm; }
+table.k col.c-due { width: 23mm; } table.k col.c-sig { width: 40mm; }
+table.k th { background: #054834; color: #fff; border: 1px solid #054834; padding: 1.4mm 1mm; font-weight: 700; font-size: 10pt; }
+table.k th.sub { background: #dcebe4; color: #054834; border-color: #b9c4bf; font-size: 9.5pt; padding: 1mm; }
+table.k td { border: 1px solid #c3cec9; padding: 0 2.5mm; height: 11.6mm; vertical-align: middle; }
+table.k tbody tr:nth-child(even) td { background: #fafcfb; }
+table.k td.n { text-align: center; color: #666; padding: 0; }
+table.k td.nm { font-weight: 700; font-size: 10.5pt; }
+table.k td.c { text-align: center; padding: 0 1mm; }
+table.k td.due { text-align: center; font-weight: 700; color: #054834; background: #fbf7ea !important; }
+table.k td.sig { background: #fff !important; }
 table.k tr { break-inside: avoid; }
-table.k tfoot td { height: auto; font-weight: 700; background: #f6efdc; border-top: 2px solid #b8963e; padding: 4px 6px; }
-.words { font-size: 9.5pt; background: #f6f9f7; border-radius: 6px; padding: 5px 8px; margin-top: 6px; }
-.signs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-top: 12px; font-size: 9.5pt; break-inside: avoid; }
-.signs div { border-top: 1px solid #999; padding-top: 5px; min-height: 34px; }
-.meta { font-size: 8pt; color: #777; margin-top: 4px; }
+table.k tfoot td { height: 8.5mm; font-weight: 700; background: #f6efdc !important; border-top: 0.5mm solid #b8963e; }
+table.k tfoot tr.grand td { background: #054834 !important; color: #fff; border-color: #054834; }
+.dash { color: #aaa; }
+
+/* الإجمالي بالحروف والتوقيعات */
+.words { font-size: 10pt; border: 1px dashed #b8963e; border-radius: 2mm; padding: 1.6mm 4mm; margin-top: 3mm; background: #fffdf6; }
+.signs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6mm; margin-top: 7mm; text-align: center; font-size: 10pt; font-weight: 700; color: #054834; break-inside: avoid; }
+.signs div { padding-bottom: 9mm; border-bottom: 1px dotted #777; }
+.meta { font-size: 7.5pt; color: #888; margin-top: 3mm; display: flex; justify-content: space-between; }
+
+/* شريط التحكم على الشاشة فقط */
 .sub2 { background: #f3f7f5; border-bottom: 1px solid #cfdcd6; padding: 6px 14px; font-size: 10pt; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
 .sub2 a { color: #054834; font-weight: 700; }
 .old { background: #fff4d6; color: #7a5f1c; padding: 6px 14px; font-size: 10pt; }
+@media screen { .pg { border: 1px solid #e3e3e3; box-shadow: 0 2px 10px rgba(0,0,0,.06); padding: 10mm 8mm; margin: 14px auto; background: #fff; } body { background: #eef1ef; } }
 @media print { .sub2, .old { display: none; } }
 </style>
 <% if (!forPdf) { %>
@@ -49,33 +72,42 @@ table.k tfoot td { height: auto; font-weight: 700; background: #f6efdc; border-t
 <div class="sheet">
 <% pages.forEach((list, p) => { const last = p === pages.length - 1; %>
 <div class="pg">
-  <div class="rh">
-    <% if (logo) { %><img src="<%= logo %>" alt=""><% } %>
-    <div class="o"><b><%= org.name %> <small class="reg"><%= org.registration || '' %></small></b><span><%= org.subtitle || '' %></span></div>
-    <div class="t"><h2>كشف استلام الكفالة والإعانة</h2><div>شهر <b><%= U.periodLabel(period) %></b> · صفحة <%= p + 1 %> من <%= pages.length %></div><div>العملة: <%= org.currency %></div></div>
+  <div class="lh">
+    <div><% if (logo) { %><img src="<%= logo %>" alt=""><% } %></div>
+    <div class="org">
+      <div class="n"><%= fullName %></div>
+      <% if (org.registration) { %><div class="r"><%= org.registration %></div><% } %>
+      <% if (branch) { %><div class="b"><%= branch %></div><% } %>
+    </div>
+    <div class="doc"><div class="h">كشف استلام الكفالة والإعانة</div><div class="m">شهر <%= U.periodLabel(period) %></div></div>
+  </div>
+  <div class="rule"></div>
+  <div class="info">
+    <span>عدد الأسر في الكشف: <b><%= rows.length %></b></span>
+    <span>العملة: <b><%= org.currency %></b></span>
+    <span>صفحة <b><%= p + 1 %></b> من <b><%= pages.length %></b></span>
   </div>
   <table class="k">
+    <colgroup><col class="c-n"><col><col class="c-ph"><col class="c-mo"><col class="c-mo"><col class="c-due"><col class="c-sig"></colgroup>
     <thead>
-      <tr><th rowspan="2">م</th><th rowspan="2">اسم ولي الأمر</th><th rowspan="2">رقم التليفون</th><th colspan="2">المبلغ</th><th rowspan="2">المبلغ المستحق</th><th rowspan="2">التاريخ</th><th rowspan="2">التوقيع</th></tr>
+      <tr><th rowspan="2">م</th><th rowspan="2">اسم ولي الأمر</th><th rowspan="2">رقم التليفون</th><th colspan="2">المبلغ</th><th rowspan="2">المبلغ المستحق</th><th rowspan="2">التوقيع بالاستلام</th></tr>
       <tr><th class="sub">كفالة</th><th class="sub">إعانة</th></tr>
     </thead>
     <tbody>
     <% list.forEach((r, i) => { %>
-      <tr><td class="n"><%= p * per + i + 1 %></td><td><b><%= r.guardian %></b></td><td class="ph num"><%= r.phone %></td>
-      <td class="mo num"><%= C(r.kafala) ? fmt(r.kafala) : '—' %></td><td class="mo num"><%= C(r.aid) ? fmt(r.aid) : '—' %></td>
-      <td class="due num"><%= fmt(r.due) %></td><td class="dt"></td><td class="sig"></td></tr>
+      <tr><td class="n"><%= p * per + i + 1 %></td><td class="nm"><%= r.guardian %></td><td class="c num"><%= r.phone %></td>
+      <td class="c num"><%- C(r.kafala) ? fmt(r.kafala) : '<span class="dash">—</span>' %></td><td class="c num"><%- C(r.aid) ? fmt(r.aid) : '<span class="dash">—</span>' %></td>
+      <td class="due num"><%= fmt(r.due) %></td><td class="sig"></td></tr>
     <% }) %>
     </tbody>
     <tfoot>
-      <tr><td colspan="3">إجمالي الصفحة (<%= list.length %> أسرة)</td><td class="c num"><%= fmt(U.fromCents(sum(list, 'kafala'))) %></td><td class="c num"><%= fmt(U.fromCents(sum(list, 'aid'))) %></td><td class="c num"><%= fmt(U.fromCents(sum(list, 'due'))) %></td><td colspan="2"></td></tr>
-      <% if (last && pages.length > 1) { %><tr><td colspan="3">الإجمالي الكلي (<%= rows.length %> أسرة)</td><td class="c num"><%= fmt(U.fromCents(sum(rows, 'kafala'))) %></td><td class="c num"><%= fmt(U.fromCents(sum(rows, 'aid'))) %></td><td class="c num"><%= fmt(U.fromCents(sum(rows, 'due'))) %></td><td colspan="2"></td></tr><% } %>
+      <tr><td colspan="3">إجمالي الصفحة (<%= list.length %> أسرة)</td><td class="c num"><%= fmt(U.fromCents(sum(list, 'kafala'))) %></td><td class="c num"><%= fmt(U.fromCents(sum(list, 'aid'))) %></td><td class="c num"><%= fmt(U.fromCents(sum(list, 'due'))) %></td><td></td></tr>
+      <% if (last && pages.length > 1) { %><tr class="grand"><td colspan="3">الإجمالي الكلي (<%= rows.length %> أسرة)</td><td class="c num"><%= fmt(U.fromCents(sum(rows, 'kafala'))) %></td><td class="c num"><%= fmt(U.fromCents(sum(rows, 'aid'))) %></td><td class="c num"><%= fmt(U.fromCents(sum(rows, 'due'))) %></td><td></td></tr><% } %>
     </tfoot>
   </table>
-  <% if (last) { %>
-  <div class="words">إجمالي الكشف: <%= words(sum(rows, 'due')) %></div>
-  <div class="signs"><div>أمين الصندوق</div><div>المحاسب</div><div>مسؤول الكفالات</div><div>ختم الجمعية</div></div>
-  <% } %>
-  <div class="meta">نسخة محفوظة رقم <%= st.version %> بتاريخ <%= savedAt %></div>
+  <% if (last) { %><div class="words">إجمالي الكشف: <b><%= words(sum(rows, 'due')) %></b></div><% } %>
+  <div class="signs"><div>أمين الصندوق</div><div>مسؤول الكفالات</div><div>رئيس مجلس الإدارة</div><div>ختم الجمعية</div></div>
+  <div class="meta"><span>نسخة محفوظة رقم <%= st.version %> — <%= savedAt %></span><span><%= fullName %></span></div>
 </div>
 <% }) %>
 </div>

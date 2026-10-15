@@ -33,7 +33,7 @@ tfoot td { background: #f6efdc; font-weight: 700; height: auto; border-top: 2px 
     <tfoot><tr><td colspan="4">الإجمالي — <%= rows.length %> أسرة</td><td class="num"><%= fmt(U.fromCents(tk)) %></td><td class="num"><%= fmt(U.fromCents(ta)) %></td><td class="num"><%= fmt(U.fromCents(td)) %></td><td class="num"><%= fmt(U.fromCents(tp)) %></td><td colspan="2"></td></tr></tfoot>
   </table>
   <p class="note">إجمالي المستحق: <%= words(td) %>. يوقّع المستلم أمام اسمه عند استلام المبلغ، ويُسجّل الصرف في النظام بعد ذلك.</p>
-  <div class="signs"><div>أمين الصندوق</div><div>المحاسب</div><div>مسؤول الكفالات</div><div>ختم الجمعية</div></div>
+  <div class="signs"><div>أمين الصندوق</div><div>مسؤول الكفالات</div><div>رئيس مجلس الإدارة</div><div>ختم الجمعية</div></div>
 </div>
 <% if (!forPdf) { %><script src="/static/js/print.js?v=<%= v %>"></script><% } %>
 </body></html>
