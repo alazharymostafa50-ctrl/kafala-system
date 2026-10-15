@@ -6,7 +6,10 @@ const stats = require('../lib/stats');
 const { h, can, flash } = require('../middleware');
 
 router.get('/', h(async (req, res) => {
-  if (!req.perms.has('dashboard.view')) return res.render('home-basic', { title: 'الرئيسية' });
+  if (!req.perms.has('dashboard.view')) {
+    if (req.perms.has('poor.view') && !req.perms.has('families.view')) return res.redirect('/poor');
+    return res.render('home-basic', { title: 'الرئيسية' });
+  }
   const period = U.validPeriod(req.query.period) ? req.query.period : U.currentPeriod();
   try { await require('../lib/entitlements').autoSync(period); } catch (e) { console.error('الحساب التلقائي:', e.message); }
   const d = await stats.dashboard(period);

@@ -63,6 +63,7 @@ function createApp({ sessionSecret = process.env.SESSION_SECRET } = {}) {
   app.use(M.requireLogin);
   app.use(require('./lib/scheduler').lazyEngine);
   app.use(require('./routes/dashboard'));
+  app.use(require('./routes/poor'));
   app.use(require('./routes/trash'));
   app.use(require('./routes/families'));
   app.use(require('./routes/documents'));

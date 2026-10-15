@@ -6,6 +6,12 @@ const L = {
     active: ['نشط', 'success'], under_review: ['قيد المراجعة', 'warning'], suspended: ['موقوف مؤقتًا', 'danger'],
     closed: ['مغلق', 'muted'], archived: ['مؤرشف', 'muted'],
   },
+  area: { east: ['شرق القرية', 'info'], west: ['غرب القرية', 'info'], north: ['شمال القرية', 'info'], south: ['جنوب القرية', 'info'] },
+  poorReason: { widow: ['أرملة', 'muted'], divorced: ['مطلقة', 'muted'], sick: ['مريض / مرض مزمن', 'muted'], elderly: ['كبير السن', 'muted'],
+    disabled: ['من ذوي الهمم', 'muted'], unemployed: ['بلا عمل', 'muted'], low_income: ['دخل محدود', 'muted'], other: ['سبب آخر', 'muted'] },
+  giveType: { cash: ['نقدي شهري', 'success'], in_kind: ['عيني', 'gold'], both: ['نقدي وعيني', 'info'] },
+  poorKind: { zakat: ['زكاة', 'gold'], sadaqa: ['صدقة', 'success'], other: ['أخرى', 'muted'] },
+  poorStatus: { active: ['نشطة', 'success'], stopped: ['متوقفة', 'muted'] },
   supportType: { kafala: ['كفالة', 'success'], aid: ['إعانة', 'info'], both: ['كفالة وإعانة', 'gold'] },
   calcMethod: {
     family_fixed: ['مبلغ ثابت للأسرة كلها', 'info'], per_member: ['مبلغ لكل يتيم', 'info'], mixed: ['مبلغ للأسرة + مبلغ لكل يتيم', 'info'],

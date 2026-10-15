@@ -1,0 +1,26 @@
+<%- include('../partials/head', { title }) %>
+<div class="pagehead"><div><h1>قسم الفقراء والمساكين</h1><p>قسم مستقل بحالاته وصندوقه وكشوفه — شهر <b><%= U.periodLabel(period) %></b></p></div></div>
+<div class="tiles">
+  <% if (can('poor.edit')) { %><a class="tile" href="/poor/cases/new"><%- icon('plus') %>إضافة حالة<small>تسجيل حالة فقيرة أو مسكينة</small></a><% } %>
+  <a class="tile" href="/poor/cases"><%- icon('search') %>البحث عن حالة<small>بالاسم أو الرقم القومي أو الهاتف</small></a>
+  <a class="tile" href="/poor/monthly/<%= period %>"><%- icon('calendar') %>الإعانة النقدية الشهرية<small>تسجيل من استلم ومن لم يستلم</small></a>
+  <a class="tile gold" href="/poor/monthly/<%= period %>/kashf" target="_blank" rel="noopener"><%- icon('print') %>كشف الإعانة النقدية<small>طباعة كشف الشهر بالتوقيع</small></a>
+  <a class="tile gold" href="/poor/gifts"><%- icon('doc') %>العطاء العيني<small>شنطة رمضان، لحوم، بطاطين...</small></a>
+  <% if (can('poor.finance')) { %><a class="tile" href="/poor/donations"><%- icon('wallet') %>تسجيل تبرع للقسم<small>زكاة أو صدقة</small></a><% } %>
+</div>
+<div class="kpis">
+  <div class="kpi"><div class="k">الحالات النشطة</div><div class="v"><%= s.active %></div></div>
+  <div class="kpi"><div class="k">لها إعانة نقدية</div><div class="v"><%= s.cash %></div></div>
+  <div class="kpi"><div class="k">لها عطاء عيني</div><div class="v"><%= s.in_kind %></div></div>
+  <div class="kpi gold"><div class="k">رصيد صندوق القسم</div><div class="v num"><%= fmt(bal.balance) %></div></div>
+  <div class="kpi"><div class="k">المطلوب شهريًا (نقدي)</div><div class="v num"><%= fmt(s.monthly_total) %></div></div>
+  <div class="kpi ok"><div class="k">صُرف هذا الشهر</div><div class="v num"><%= fmt(paid.total) %></div><div class="small muted"><%= paid.n %> حالة</div></div>
+</div>
+<div class="grid g2">
+  <div class="card"><h2>الحالات حسب المنطقة</h2>
+    <table class="t"><tbody><% ['east','west','north','south'].forEach(a => { const r = byArea.find(x => x.area === a); %><tr><td><a href="/poor/cases?area=<%= a %>"><%= L.label('area', a) %></a></td><td class="num"><b><%= r ? r.n : 0 %></b></td></tr><% }) %></tbody></table></div>
+  <div class="card"><h2>آخر كشوف العطاء العيني</h2>
+    <% if (!dists.length) { %><p class="muted">لا توجد كشوف بعد. <a href="/poor/gifts">أنشئ أول كشف</a></p><% } else { %>
+    <table class="t"><tbody><% dists.forEach(d => { %><tr><td><a href="/poor/gifts/<%= d.id %>"><b><%= d.title %></b></a><br><span class="small muted"><%= d.dist_date %></span></td><td class="small">استلم <%= d.got %> من <%= d.n %></td></tr><% }) %></tbody></table><% } %></div>
+</div>
+<%- include('../partials/foot') %>

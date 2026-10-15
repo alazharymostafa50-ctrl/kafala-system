@@ -1,0 +1,34 @@
+<%- include('../partials/head', { title }) %>
+<div class="pagehead">
+  <div><div class="crumbs"><a href="/poor/cases">الحالات</a> / <%= c.case_no %></div>
+    <h1><%= c.full_name %> <%- badge('poorStatus', c.status) %> <%- badge('giveType', c.give_type) %><% if (c.is_demo) { %> <span class="badge warning">تجريبي</span><% } %></h1>
+    <p>رقم الحالة <b><%= c.case_no %></b> · سُجلت <%= new Date(c.created_at).toLocaleDateString('ar-EG') %><%= c.by_name ? ' بواسطة ' + c.by_name : '' %></p></div>
+  <div class="btns">
+    <% if (can('poor.edit') && !c.deleted_at) { %><a class="btn sec" href="/poor/cases/<%= c.id %>/edit"><%- icon('edit') %> تعديل</a>
+    <form method="post" action="/poor/cases/<%= c.id %>/delete" class="inline" data-confirm="هل أنت متأكد من حذف «<%= esc(c.full_name) %>»؟ ستُنقل إلى سلة المحذوفات ويمكنك استرجاعها في أي وقت."><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn danger"><%- icon('trash') %> حذف الحالة</button></form><% } %>
+  </div>
+</div>
+<% if (c.deleted_at) { %><div class="alert warning">هذه الحالة في <a href="/trash">سلة المحذوفات</a>.
+<% if (can('poor.edit')) { %><form method="post" action="/poor/cases/<%= c.id %>/restore" class="inline"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn sm"><%- icon('restore') %> استرجاع</button></form><% } %></div><% } %>
+<div class="grid g2">
+  <div class="card"><h2>البيانات</h2><dl class="dl">
+    <dt>الرقم القومي</dt><dd class="ltr"><%= c.national_id || '—' %></dd>
+    <dt>الهاتف</dt><dd class="ltr" style="text-align:right"><%= c.phone || '—' %></dd>
+    <dt>المنطقة</dt><dd><%= L.label('area', c.area) %><%= c.address ? ' — ' + c.address : '' %></dd>
+    <dt>سبب الاستحقاق</dt><dd><%= L.label('poorReason', c.reason) %><%= c.reason_note ? ' — ' + c.reason_note : '' %></dd>
+    <dt>عدد أفراد الأسرة</dt><dd><%= c.family_size || '—' %></dd>
+    <dt>نوع العطاء</dt><dd><%- badge('giveType', c.give_type) %></dd>
+    <% if (c.give_type !== 'in_kind') { %><dt>المبلغ الشهري</dt><dd><b><%- money(c.monthly_amount) %></b> <%= cur %></dd><% } %>
+    <% if (c.notes) { %><dt>ملاحظات</dt><dd><%= c.notes %></dd><% } %>
+  </dl></div>
+  <div class="card"><h2>العطاء العيني الذي استلمته</h2>
+    <% if (!gifts.length) { %><p class="muted">لم تُدرج في أي كشف عطاء عيني بعد.</p><% } else { %>
+    <table class="t"><tbody><% gifts.forEach(g => { %><tr><td><a href="/poor/gifts/<%= g.distribution_id %>"><%= g.title %></a><br><span class="small muted"><%= g.dist_date %><%= g.quantity ? ' · ' + g.quantity : '' %></span></td><td><%- g.received_at ? '<span class="badge success">استلم</span>' : '<span class="badge warning">لم يستلم</span>' %></td></tr><% }) %></tbody></table><% } %>
+  </div>
+</div>
+<div class="card"><h2>الإعانة النقدية المصروفة</h2>
+<% if (!payments.length) { %><p class="muted">لا توجد مبالغ مصروفة بعد.</p><% } else { %>
+<table class="t"><thead><tr><th>الشهر</th><th class="num">المبلغ</th><th>تاريخ الاستلام</th><th>الحالة</th></tr></thead><tbody>
+<% payments.forEach(p => { %><tr><td><a href="/poor/monthly/<%= p.period %>"><%= U.periodLabel(p.period) %></a></td><td class="num"><%= fmt(p.amount) %></td><td><%= p.pay_date %></td><td><%- p.status === 'paid' ? '<span class="badge success">استلم</span>' : '<span class="badge muted">ملغى: ' + esc(p.reverse_reason) + '</span>' %></td></tr><% }) %>
+</tbody></table><% } %></div>
+<%- include('../partials/foot') %>

@@ -26,8 +26,9 @@ const SPONSORS = [['الحاج عبد الحميد الشافعي', 1000], ['أ.
 
 async function status() {
   const r = await db.one(`SELECT (SELECT count(*) FROM families WHERE is_demo)::int AS families, (SELECT count(*) FROM sponsors WHERE is_demo)::int AS sponsors,
-    (SELECT count(*) FROM donations WHERE is_demo)::int AS donations, (SELECT count(*) FROM expenses WHERE is_demo)::int AS expenses`);
-  return { ...r, exists: r.families + r.sponsors + r.donations + r.expenses > 0 };
+    (SELECT count(*) FROM donations WHERE is_demo)::int AS donations, (SELECT count(*) FROM expenses WHERE is_demo)::int AS expenses,
+    (SELECT count(*) FROM poor_cases WHERE is_demo)::int AS poor`);
+  return { ...r, exists: r.families + r.sponsors + r.donations + r.expenses + r.poor > 0 };
 }
 
 async function seed(user, req) {
@@ -84,6 +85,22 @@ async function seed(user, req) {
       const amt = k % 3 === 1 ? U.fromCents(Math.floor(U.toCents(r.amount_due) / 2)) : r.amount_due;
       await ent.disburse(c, r.id, { amount: amt, date: today, method: 'cash', fund: 'orphans', idempotency_key: `demo-${r.id}`, reference: 'تجريبي' }, user);
     }
+  });
+  // قسم الفقراء والمساكين
+  await db.tx(async (c) => {
+    const P = [['نعيمة عبد الفتاح', 'widow', 'east', 'cash', 300], ['محمود السيد خليل', 'sick', 'west', 'both', 250], ['الحاجة فوزية علي', 'elderly', 'north', 'in_kind', 0],
+      ['سامي عبد العزيز', 'unemployed', 'south', 'cash', 200], ['أم هاشم إبراهيم', 'divorced', 'east', 'in_kind', 0], ['عادل رمضان حسن', 'disabled', 'west', 'both', 350]];
+    const ids = [];
+    for (const [i, [n, reason, area, give, amt]] of P.entries()) {
+      ids.push((await c.one(`INSERT INTO poor_cases (full_name, national_id, phone, reason, area, give_type, monthly_amount, family_size, is_demo, created_by)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,TRUE,$9) RETURNING id`, [n + TAG, '2' + String(70000000000000 + i * 1111111).slice(0, 13), '0122' + String(7000000 + i * 333).padStart(7, '0'), reason, area, give, amt, 2 + i, user.id])).id);
+    }
+    await c.query(`INSERT INTO poor_donations (donor_name, kind, amount, donation_date, is_demo, created_by) VALUES ($1,'zakat',3000,$2,TRUE,$3), ($4,'sadaqa',1200,$2,TRUE,$3)`,
+      ['متبرع بالزكاة' + TAG, today, user.id, 'فاعل خير' + TAG]);
+    await c.query(`INSERT INTO poor_payments (case_id, period, amount, pay_date, created_by) SELECT id, $1, monthly_amount, $2, $3 FROM poor_cases WHERE id = ANY($4) AND give_type='cash'`, [period, today, user.id, ids]);
+    const g = await c.one(`INSERT INTO poor_distributions (title, items, dist_date, created_by) VALUES ($1,'أرز، سكر، زيت، مكرونة، شاي',$2,$3) RETURNING id`, ['شنطة رمضان' + TAG, today, user.id]);
+    await c.query(`INSERT INTO poor_distribution_items (distribution_id, case_id, quantity, received_at)
+      SELECT $1, id, 'شنطة واحدة', CASE WHEN area='east' THEN now() END FROM poor_cases WHERE id = ANY($2) AND give_type IN ('in_kind','both')`, [g.id, ids]);
   });
   await audit.log(req || { user }, 'demo_seeded', 'system', '', { after: { families: famIds.length } });
   return { families: famIds.length };
@@ -143,6 +160,13 @@ async function purge(user, req) {
     const keys = reps.flatMap((r) => [r.pdf_file, r.approved_pdf_file]).filter(Boolean);
     await c.query('DELETE FROM monthly_reports WHERE id = ANY($1)', [reps.map((r) => r.id)]);
     if (keys.length) await c.query('DELETE FROM stored_files WHERE key = ANY($1)', [keys]);
+    // قسم الفقراء والمساكين
+    const pc = (await c.many('SELECT id FROM poor_cases WHERE is_demo')).map((r) => r.id);
+    await c.query('DELETE FROM poor_distribution_items WHERE case_id = ANY($1)', [pc]);
+    await c.query(`DELETE FROM poor_distributions d WHERE d.title LIKE '%(تجريبي)%' AND NOT EXISTS (SELECT 1 FROM poor_distribution_items i WHERE i.distribution_id=d.id)`);
+    await c.query('DELETE FROM poor_payments WHERE case_id = ANY($1)', [pc]);
+    await c.query('DELETE FROM poor_cases WHERE id = ANY($1)', [pc]);
+    await c.query('DELETE FROM poor_donations WHERE is_demo');
     await audit.log(req || { user }, 'demo_purged', 'system', '', { after: { families: fam.length, sponsors: spon.length, donations: donIds.length, expenses: expIds.length, ledger: ledIds.length, reports: reps.length } }, c);
     return { families: fam.length };
   });

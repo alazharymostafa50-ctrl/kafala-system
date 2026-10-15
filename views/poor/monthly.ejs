@@ -1,0 +1,29 @@
+<%- include('../partials/head', { title }) %>
+<div class="pagehead"><div><h1>الإعانة النقدية الشهرية — <%= U.periodLabel(period) %></h1><p>الحالات النشطة التي لها مبلغ نقدي شهري. سجّل الاستلام لكل حالة، أو اطبع الكشف للتوقيع.</p></div>
+<div class="btns noprint">
+  <form method="get" class="btns" onsubmit="location.href='/poor/monthly/'+this.m.value;return false"><input type="month" name="m" value="<%= period %>" style="width:170px"><button class="btn sec">عرض</button></form>
+  <a class="btn gold" href="/poor/monthly/<%= period %>/kashf" target="_blank" rel="noopener"><%- icon('print') %> طباعة كشف الإعانة النقدية</a>
+</div></div>
+<div class="kpis">
+  <div class="kpi"><div class="k">عدد الحالات</div><div class="v"><%= rows.length %></div></div>
+  <div class="kpi"><div class="k">إجمالي المطلوب</div><div class="v num"><%= fmt(U.fromCents(due)) %></div></div>
+  <div class="kpi ok"><div class="k">المصروف</div><div class="v num"><%= fmt(U.fromCents(paid)) %></div></div>
+  <div class="kpi bad"><div class="k">المتبقي</div><div class="v num"><%= fmt(U.fromCents(due - paid)) %></div></div>
+  <div class="kpi gold"><div class="k">رصيد صندوق القسم</div><div class="v num"><%= fmt(bal.balance) %></div></div>
+</div>
+<div class="tablewrap"><table class="t">
+<thead><tr><th>الاسم</th><th>الرقم القومي</th><th>الهاتف</th><th>المنطقة</th><th class="num">المبلغ</th><th>الحالة</th><th class="noprint">الإجراء</th></tr></thead><tbody>
+<% if (!rows.length) { %><tr><td colspan="7" class="empty">لا توجد حالات لها إعانة نقدية. <a href="/poor/cases/new">أضف حالة</a></td></tr><% } %>
+<% rows.forEach(r => { %><tr id="c<%= r.id %>">
+  <td><a href="/poor/cases/<%= r.id %>"><b><%= r.full_name %></b></a></td><td class="num"><%= r.national_id || '—' %></td><td class="num"><%= r.phone || '—' %></td><td><%= L.label('area', r.area) %></td>
+  <td class="num"><b><%= fmt(r.pay_id ? r.paid_amount : r.monthly_amount) %></b></td>
+  <td><%- r.pay_id ? '<span class="badge success">استلم ' + r.pay_date + '</span>' : '<span class="badge warning">لم يستلم</span>' %></td>
+  <td class="noprint actions">
+    <% if (can('poor.finance')) { if (!r.pay_id) { %>
+    <form method="post" action="/poor/monthly/<%= period %>/pay/<%= r.id %>" class="inline" data-confirm="تأكيد أن «<%= esc(r.full_name) %>» استلم <%= fmt(r.monthly_amount) %> <%= cur %>؟"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn sm"><%- icon('check') %> استلم</button></form>
+    <% } else { %>
+    <details><summary class="btn sm sec">إلغاء الاستلام</summary><form method="post" action="/poor/payments/<%= r.pay_id %>/reverse" style="margin-top:.4rem" data-confirm="إلغاء استلام «<%= esc(r.full_name) %>» وإرجاع المبلغ للصندوق؟"><input type="hidden" name="_csrf" value="<%= csrf %>"><input name="reason" required placeholder="سبب الإلغاء"><button class="btn sm danger" style="margin-top:.3rem">تأكيد الإلغاء</button></form></details>
+    <% } } %>
+  </td></tr><% }) %>
+</tbody></table></div>
+<%- include('../partials/foot') %>

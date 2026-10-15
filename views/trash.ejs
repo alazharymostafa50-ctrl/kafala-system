@@ -2,7 +2,7 @@
 <% const when = (d) => new Date(d).toLocaleString('ar-EG', { timeZone: 'Africa/Cairo', dateStyle: 'medium', timeStyle: 'short' }); %>
 <div class="pagehead"><div><h1><%- icon('trash') %> سلة المحذوفات</h1><p>كل ما يُحذف يُنقل إلى هنا، ويمكنك استرجاعه بضغطة زر. أما العمليات المالية (التبرعات والصرف والمصروفات) فلا تُحذف، بل تُلغى بقيد عكسي حفاظًا على صحة الحسابات.</p></div></div>
 
-<% if (!families.length && !members.length && !sponsors.length) { %><div class="card"><p class="empty">السلة فارغة.</p></div><% } %>
+<% if (!families.length && !members.length && !sponsors.length && !poorCases.length) { %><div class="card"><p class="empty">السلة فارغة.</p></div><% } %>
 
 <% if (families.length) { %>
 <div class="card"><h2>الأسر المحذوفة (<%= families.length %>)</h2>
@@ -25,6 +25,13 @@
 <div class="tablewrap"><table class="t"><thead><tr><th>رقم الكفيل</th><th>الاسم</th><th>تاريخ الحذف</th><th>حذفه</th><th></th></tr></thead><tbody>
 <% sponsors.forEach(s => { %><tr><td><%= s.sponsor_no %></td><td><b><%= s.full_name %></b></td><td class="small"><%= when(s.deleted_at) %></td><td class="small"><%= s.by_name || '—' %></td>
 <td><form method="post" action="/sponsors/<%= s.id %>/restore" class="inline" data-confirm="استرجاع الكفيل «<%= esc(s.full_name) %>»؟"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn sm"><%- icon('restore') %> استرجاع</button></form></td></tr><% }) %>
+</tbody></table></div></div>
+<% } %>
+<% if (poorCases.length) { %>
+<div class="card"><h2>حالات الفقراء والمساكين المحذوفة (<%= poorCases.length %>)</h2>
+<div class="tablewrap"><table class="t"><thead><tr><th>رقم الحالة</th><th>الاسم</th><th>تاريخ الحذف</th><th>حذفها</th><th></th></tr></thead><tbody>
+<% poorCases.forEach(c => { %><tr><td><a href="/poor/cases/<%= c.id %>"><%= c.case_no %></a></td><td><b><%= c.full_name %></b></td><td class="small"><%= when(c.deleted_at) %></td><td class="small"><%= c.by_name || '—' %></td>
+<td><form method="post" action="/poor/cases/<%= c.id %>/restore" class="inline" data-confirm="استرجاع «<%= esc(c.full_name) %>»؟"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn sm"><%- icon('restore') %> استرجاع</button></form></td></tr><% }) %>
 </tbody></table></div></div>
 <% } %>
 <%- include('partials/foot') %>

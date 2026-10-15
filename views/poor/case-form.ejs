@@ -1,0 +1,41 @@
+<%- include('../partials/head', { title }) %>
+<div class="pagehead"><div><div class="crumbs"><a href="/poor/cases">الحالات</a> / <%= isNew ? 'حالة جديدة' : c.case_no %></div><h1><%= title %></h1>
+<p>الخانات المعلّمة بـ <span class="req">*</span> مطلوبة.</p></div></div>
+<form method="post" action="<%= isNew ? '/poor/cases' : '/poor/cases/' + c.id %>" class="simpleform">
+<input type="hidden" name="_csrf" value="<%= csrf %>">
+<% const gt = old('give_type', c.give_type || 'cash'); %>
+<fieldset><legend><span class="stepno">1</span> بيانات الحالة</legend><div class="fields">
+  <div class="field"><label>الاسم (رباعي) <span class="req">*</span></label><input name="full_name" required maxlength="150" value="<%= old('full_name', c.full_name) %>"></div>
+  <div class="field"><label>الرقم القومي (14 رقمًا)</label><input name="national_id" inputmode="numeric" maxlength="14" dir="ltr" value="<%= old('national_id', c.national_id) %>"></div>
+  <div class="field"><label>رقم الهاتف</label><input type="tel" name="phone" dir="ltr" value="<%= old('phone', c.phone) %>"></div>
+  <div class="field"><label>عدد أفراد الأسرة</label><input type="number" name="family_size" min="1" max="30" value="<%= old('family_size', c.family_size) %>"></div>
+</div></fieldset>
+
+<fieldset class="money"><legend><span class="stepno">2</span> المنطقة <span class="req">*</span></legend>
+  <div class="choice big4">
+    <% L.options('area').forEach(o => { %><label class="choicebox"><input type="radio" name="area" value="<%= o.value %>" required <%= old('area', c.area)===o.value?'checked':'' %>> <span><b><%= o.text %></b></span></label><% }) %>
+  </div>
+  <div class="field" style="margin-top:.7rem"><label>العنوان بالتفصيل</label><input name="address" value="<%= old('address', c.address) %>"></div>
+</fieldset>
+
+<fieldset><legend><span class="stepno">3</span> سبب الاستحقاق <span class="req">*</span></legend><div class="fields">
+  <div class="field"><label>السبب</label><select name="reason" required><option value="">— اختر —</option><% L.options('poorReason').forEach(o => { %><option value="<%= o.value %>" <%= old('reason', c.reason)===o.value?'selected':'' %>><%= o.text %></option><% }) %></select></div>
+  <div class="field"><label>تفاصيل السبب</label><input name="reason_note" maxlength="300" placeholder="مثال: مريض بالكلى ويحتاج غسيلًا" value="<%= old('reason_note', c.reason_note) %>"></div>
+</div></fieldset>
+
+<fieldset class="money"><legend><span class="stepno">4</span> نوع العطاء <span class="req">*</span></legend>
+  <div class="choice big3">
+    <label class="choicebox"><input type="radio" name="give_type" value="cash" <%= gt==='cash'?'checked':'' %>> <span><b>نقدي شهري</b><small>مبلغ ثابت كل شهر</small></span></label>
+    <label class="choicebox"><input type="radio" name="give_type" value="in_kind" <%= gt==='in_kind'?'checked':'' %>> <span><b>عيني</b><small>شنط ولحوم وملابس وغيرها</small></span></label>
+    <label class="choicebox"><input type="radio" name="give_type" value="both" <%= gt==='both'?'checked':'' %>> <span><b>نقدي وعيني</b><small>الاثنان معًا</small></span></label>
+  </div>
+  <div class="fields" style="margin-top:.7rem"><div class="field" data-show-when="give_type=cash|both"><label>المبلغ الشهري (<%= cur %>) <span class="req">*</span></label><input name="monthly_amount" inputmode="decimal" value="<%= old('monthly_amount', c.monthly_amount || '0') %>"></div></div>
+</fieldset>
+
+<fieldset><legend>ملاحظات</legend><div class="fields">
+  <div class="field wide"><textarea name="notes"><%= old('notes', c.notes) %></textarea></div>
+  <% if (!isNew) { %><div class="field"><label>حالة الملف</label><select name="status"><option value="active" <%= c.status==='active'?'selected':'' %>>نشطة</option><option value="stopped" <%= c.status==='stopped'?'selected':'' %>>متوقفة</option></select></div><% } %>
+</div></fieldset>
+<div class="formactions big"><button class="btn lg"><%- icon('check') %> حفظ الحالة</button><a class="btn sec lg" href="<%= isNew ? '/poor/cases' : '/poor/cases/' + c.id %>">إلغاء</a></div>
+</form>
+<%- include('../partials/foot') %>

@@ -31,6 +31,6 @@ body { font-family: 'CairoR', Tahoma, sans-serif; color: #1d2a25; margin: 0; bac
 </head>
 <body>
 <% if (!forPdf) { %>
-<div class="bar"><span><%= title %> — <%= rows.length %> أسرة</span>
-<span><button type="button" id="printBtn">طباعة</button> <a href="?<%= typeof pdfQuery !== 'undefined' ? pdfQuery : 'format=pdf' + (typeof onlyUnpaid !== 'undefined' && onlyUnpaid ? '&only=unpaid' : '') %>">تنزيل PDF</a> <a href="/entitlements/<%= period %>">رجوع للصرف</a></span></div>
+<div class="bar"><span><%= title %> — <%= rows.length %> <%= typeof countLabel !== 'undefined' ? countLabel : 'أسرة' %></span>
+<span><button type="button" id="printBtn">طباعة</button> <a href="?<%= typeof pdfQuery !== 'undefined' ? pdfQuery : 'format=pdf' + (typeof onlyUnpaid !== 'undefined' && onlyUnpaid ? '&only=unpaid' : '') %>">تنزيل PDF</a> <a href="<%= typeof backHref !== 'undefined' ? backHref : '/entitlements/' + period %>">رجوع</a></span></div>
 <% } %>

@@ -234,3 +234,22 @@ dialog.confirm .btns { margin-top: 1rem; }
 .choice.big3 .choicebox b { font-size: 1.08rem; }
 .choice.big3 .choicebox small { font-weight: 400; color: var(--muted, #667); }
 @media (max-width: 640px) { .choice.big3 { grid-template-columns: 1fr; } }
+
+/* ===== قسم الفقراء والمساكين ===== */
+.nav a.switch { margin: .3rem 0 .6rem; border: 1px dashed rgba(252,250,240,.45); background: rgba(255,255,255,.06); font-weight: 600; }
+.nav a.switch.poor { border-color: #e7c873; color: #f6e7b8; }
+.secname { display: flex; align-items: center; gap: .5rem; margin: .2rem 0 .6rem; padding: .55rem .8rem; border-radius: 8px; background: rgba(255,255,255,.1); color: #fff; font-weight: 700; }
+body.sec-poor .sidebar { background: #3d2a12; }
+body.sec-poor .nav a.on { color: #3d2a12; }
+body.sec-poor .pagehead h1 { color: #5b3d14; }
+.choose { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.2rem; max-width: 900px; margin: 1.5rem auto; }
+.choose a { display: flex; flex-direction: column; gap: .5rem; padding: 1.6rem; border-radius: 16px; color: #fff; text-decoration: none; min-height: 190px; box-shadow: 0 6px 18px rgba(0,0,0,.12); transition: transform .15s; }
+.choose a:hover { transform: translateY(-3px); text-decoration: none; }
+.choose a svg { width: 46px; height: 46px; }
+.choose a b { font-size: 1.45rem; }
+.choose a span { opacity: .9; }
+.choose a .cnt { margin-top: auto; font-size: 1.05rem; font-weight: 700; background: rgba(255,255,255,.15); border-radius: 8px; padding: .3rem .7rem; align-self: flex-start; }
+.choose .k { background: linear-gradient(135deg, #054834, #0a5c43); }
+.choose .p { background: linear-gradient(135deg, #3d2a12, #7a5420); }
+@media (max-width: 700px) { .choose { grid-template-columns: 1fr; } }
+.choice.big4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .6rem; } @media (max-width: 700px) { .choice.big4 { grid-template-columns: repeat(2, 1fr); } }

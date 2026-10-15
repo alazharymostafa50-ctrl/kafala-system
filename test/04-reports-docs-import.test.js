@@ -217,6 +217,7 @@ test('البيانات التجريبية: إضافة مثال على كل حا�
   assert.equal(mid.f, before.f + 8); assert.ok(mid.l > before.l); assert.ok(mid.d > before.d);
   assert.ok(await db.one(`SELECT 1 FROM monthly_entitlements e JOIN families f ON f.id=e.family_id WHERE f.is_demo AND e.status='paid' LIMIT 1`));
   assert.ok(await db.one(`SELECT 1 FROM families WHERE is_demo AND support_type='aid'`));
+  assert.equal((await db.one('SELECT count(*)::int AS n FROM poor_cases WHERE is_demo')).n, 6);
   const home = await admin.get('/'); assert.match(home.text, /بيانات تجريبية/);
   // مرة تانية ممنوع
   await admin.post('/admin/demo/seed');
@@ -224,6 +225,8 @@ test('البيانات التجريبية: إضافة مثال على كل حا�
   await admin.post('/admin/demo/purge');
   const after = await count();
   assert.deepEqual(after, before, 'كل حاجة رجعت زي ما كانت');
+  assert.equal((await db.one('SELECT count(*)::int AS n FROM poor_cases')).n, 0);
+  assert.equal((await db.one('SELECT count(*)::int AS n FROM poor_distributions')).n, 0);
   // الحماية رجعت تشتغل بعد الحذف
   const anyLedger = await db.one('SELECT id FROM ledger_entries LIMIT 1');
   if (anyLedger) await assert.rejects(db.query('DELETE FROM ledger_entries WHERE id=$1', [anyLedger.id]), /غير قابل/);

@@ -1,0 +1,21 @@
+<%- include('../partials/head', { title }) %>
+<div class="pagehead"><div><h1>العطاء العيني</h1><p>لكل توزيع كشف مستقل: شنطة رمضان، لحوم الأضحية، بطاطين الشتاء، ملابس العيد...</p></div></div>
+<% if (can('poor.edit')) { %>
+<div class="card"><h2>إنشاء كشف عطاء عيني جديد</h2>
+<form method="post" action="/poor/gifts" class="fields">
+  <input type="hidden" name="_csrf" value="<%= csrf %>">
+  <div class="field"><label>اسم العطاء <span class="req">*</span></label><input name="title" required placeholder="مثال: شنطة رمضان 1448 هـ"></div>
+  <div class="field"><label>محتوى العطاء</label><input name="items" placeholder="مثال: أرز، سكر، زيت، مكرونة، شاي"></div>
+  <div class="field"><label>تاريخ التوزيع <span class="req">*</span></label><input type="date" name="dist_date" required value="<%= U.todayISO() %>"></div>
+  <div class="field"><label>الكمية لكل حالة</label><input name="quantity" placeholder="مثال: شنطة واحدة"></div>
+  <div class="field wide"><label class="check"><input type="checkbox" name="add_all" value="1" checked> إضافة كل الحالات النشطة التي لها عطاء عيني تلقائيًا</label></div>
+  <div class="field"><button class="btn"><%- icon('plus') %> إنشاء الكشف</button></div>
+</form></div>
+<% } %>
+<div class="tablewrap"><table class="t"><thead><tr><th>الرقم</th><th>العطاء</th><th>المحتوى</th><th>التاريخ</th><th>عدد الحالات</th><th>استلم</th><th>الحالة</th><th></th></tr></thead><tbody>
+<% if (!rows.length) { %><tr><td colspan="8" class="empty">لا توجد كشوف عطاء عيني بعد</td></tr><% } %>
+<% rows.forEach(d => { %><tr><td><%= d.dist_no %></td><td><a href="/poor/gifts/<%= d.id %>"><b><%= d.title %></b></a></td><td class="small"><%= d.items || '—' %></td><td><%= d.dist_date %></td><td><%= d.n %></td><td><%= d.got %></td>
+<td><%- d.status === 'open' ? '<span class="badge success">مفتوح</span>' : '<span class="badge muted">مقفل</span>' %></td>
+<td class="actions"><a class="btn sm sec" href="/poor/gifts/<%= d.id %>">فتح</a> <a class="btn sm gold" href="/poor/gifts/<%= d.id %>/kashf" target="_blank" rel="noopener"><%- icon('print') %> الكشف</a></td></tr><% }) %>
+</tbody></table></div>
+<%- include('../partials/foot') %>

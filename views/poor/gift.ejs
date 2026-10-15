@@ -1,0 +1,41 @@
+<%- include('../partials/head', { title }) %>
+<% const open = d.status === 'open' && can('poor.edit'); %>
+<div class="pagehead"><div><div class="crumbs"><a href="/poor/gifts">العطاء العيني</a> / <%= d.dist_no %></div>
+<h1><%= d.title %> <%- d.status === 'open' ? '<span class="badge success">مفتوح</span>' : '<span class="badge muted">مقفل</span>' %></h1>
+<p>تاريخ التوزيع <b><%= d.dist_date %></b><%= d.items ? ' · المحتوى: ' + d.items : '' %> · الحالات: <b><%= rows.length %></b> · استلم: <b><%= rows.filter(r => r.received_at).length %></b></p></div>
+<div class="btns noprint">
+  <a class="btn gold" href="/poor/gifts/<%= d.id %>/kashf" target="_blank" rel="noopener"><%- icon('print') %> طباعة كشف العطاء العيني</a>
+  <% if (can('poor.edit')) { %><form method="post" action="/poor/gifts/<%= d.id %>/close" class="inline" data-confirm="<%= d.status === 'open' ? 'إقفال الكشف؟ لن يمكن التعديل عليه بعد ذلك إلا بإعادة فتحه.' : 'إعادة فتح الكشف للتعديل؟' %>"><input type="hidden" name="_csrf" value="<%= csrf %>"><% if (d.status !== 'open') { %><input type="hidden" name="reopen" value="1"><% } %><button class="btn sec"><%= d.status === 'open' ? 'إقفال الكشف' : 'إعادة فتح الكشف' %></button></form><% } %>
+</div></div>
+
+<% if (open) { %>
+<div class="card"><h2>إضافة حالات إلى الكشف</h2>
+<div class="grid g2">
+<form method="post" action="/poor/gifts/<%= d.id %>/add" class="fields">
+  <input type="hidden" name="_csrf" value="<%= csrf %>"><input type="hidden" name="add_all" value="1">
+  <div class="field"><label>كل الحالات النشطة التي لها عطاء عيني في</label><select name="area"><option value="">كل المناطق</option><% L.options('area').forEach(o => { %><option value="<%= o.value %>"><%= o.text %></option><% }) %></select></div>
+  <div class="field"><label>الكمية</label><input name="quantity" placeholder="مثال: شنطة واحدة"></div>
+  <div class="field"><button class="btn sec"><%- icon('plus') %> إضافة الكل</button></div>
+</form>
+<form method="post" action="/poor/gifts/<%= d.id %>/add" class="fields">
+  <input type="hidden" name="_csrf" value="<%= csrf %>">
+  <div class="field"><label>أو اختر حالة بعينها</label><select name="case_id" required><option value="">— اختر —</option><% others.forEach(o => { %><option value="<%= o.id %>"><%= o.full_name %> (<%= L.label('area', o.area) %>)</option><% }) %></select></div>
+  <div class="field"><label>الكمية</label><input name="quantity"></div>
+  <div class="field"><button class="btn sec"><%- icon('plus') %> إضافة</button></div>
+</form>
+</div></div>
+<% } %>
+
+<div class="tablewrap"><table class="t">
+<thead><tr><th>م</th><th>الاسم</th><th>الرقم القومي</th><th>الهاتف</th><th>المنطقة</th><th>الكمية</th><th>الاستلام</th><% if (open) { %><th class="noprint"></th><% } %></tr></thead><tbody>
+<% if (!rows.length) { %><tr><td colspan="8" class="empty">الكشف فارغ. أضف الحالات من الأعلى.</td></tr><% } %>
+<% rows.forEach((r, i) => { %><tr id="i<%= r.id %>">
+  <td><%= i + 1 %></td><td><a href="/poor/cases/<%= r.case_id %>"><b><%= r.full_name %></b></a></td><td class="num"><%= r.national_id || '—' %></td><td class="num"><%= r.phone || '—' %></td><td><%= L.label('area', r.area) %></td>
+  <td><% if (open) { %><form method="post" action="/poor/gifts/<%= d.id %>/items/<%= r.id %>" class="inline btns"><input type="hidden" name="_csrf" value="<%= csrf %>"><input type="hidden" name="action" value="qty"><input name="quantity" value="<%= r.quantity || '' %>" style="width:130px"><button class="btn sm sec">حفظ</button></form><% } else { %><%= r.quantity || '—' %><% } %></td>
+  <td><%- r.received_at ? '<span class="badge success">استلم</span>' : '<span class="badge warning">لم يستلم</span>' %></td>
+  <% if (open) { %><td class="noprint actions">
+    <form method="post" action="/poor/gifts/<%= d.id %>/items/<%= r.id %>" class="inline"><input type="hidden" name="_csrf" value="<%= csrf %>"><input type="hidden" name="action" value="<%= r.received_at ? 'unreceived' : 'received' %>"><button class="btn sm <%= r.received_at ? 'sec' : '' %>"><%= r.received_at ? 'تراجع' : 'استلم' %></button></form>
+    <form method="post" action="/poor/gifts/<%= d.id %>/items/<%= r.id %>" class="inline" data-confirm="هل أنت متأكد من حذف «<%= esc(r.full_name) %>» من هذا الكشف؟"><input type="hidden" name="_csrf" value="<%= csrf %>"><input type="hidden" name="action" value="remove"><button class="btn sm danger"><%- icon('trash') %> حذف من الكشف</button></form>
+  </td><% } %></tr><% }) %>
+</tbody></table></div>
+<%- include('../partials/foot') %>

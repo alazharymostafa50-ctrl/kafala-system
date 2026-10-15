@@ -97,7 +97,7 @@ router.post('/sponsors/:id(\\d+)/restore', can('sponsors.edit'), h(async (req, r
 
 // ---------- صفحة سلة المحذوفات ----------
 router.get('/trash', h(async (req, res) => {
-  if (!req.perms.has('families.archive') && !req.perms.has('sponsors.edit')) throw new U.UserError('ليست لديك صلاحية', 403);
+  if (!req.perms.has('families.archive') && !req.perms.has('sponsors.edit') && !req.perms.has('poor.edit')) throw new U.UserError('ليست لديك صلاحية', 403);
   const families = req.perms.has('families.archive') ? await db.many(
     `SELECT f.id, f.file_no, f.family_name, f.deleted_at, g.full_name AS guardian, u.full_name AS by_name
      FROM families f LEFT JOIN guardians g ON g.family_id=f.id LEFT JOIN users u ON u.id=f.deleted_by WHERE f.deleted_at IS NOT NULL ORDER BY f.deleted_at DESC`) : [];
@@ -107,7 +107,8 @@ router.get('/trash', h(async (req, res) => {
   const sponsors = req.perms.has('sponsors.edit') ? await db.many(
     `SELECT s.id, s.sponsor_no, s.full_name, s.deleted_at, u.full_name AS by_name FROM sponsors s LEFT JOIN users u ON u.id=s.deleted_by
      WHERE s.deleted_at IS NOT NULL ORDER BY s.deleted_at DESC`) : [];
-  res.render('trash', { title: 'سلة المحذوفات', families, members, sponsors });
+  const poorCases = req.perms.has('poor.edit') ? await db.many(`SELECT c.id, c.case_no, c.full_name, c.deleted_at, u.full_name AS by_name FROM poor_cases c LEFT JOIN users u ON u.id=c.deleted_by WHERE c.deleted_at IS NOT NULL ORDER BY c.deleted_at DESC`) : [];
+  res.render('trash', { title: 'سلة المحذوفات', families, members, sponsors, poorCases });
 }));
 
 module.exports = router;

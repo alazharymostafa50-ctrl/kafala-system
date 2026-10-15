@@ -1,0 +1,33 @@
+<%- include('../partials/head', { title }) %>
+<div class="pagehead"><div><h1>صندوق الفقراء والمساكين</h1><p>صندوق مستقل تمامًا عن صندوق كفالة الأيتام: تبرعاته وصرفه ورصيده خاصة بالقسم.</p></div></div>
+<div class="kpis">
+  <div class="kpi ok"><div class="k">إجمالي الوارد</div><div class="v num"><%= fmt(bal.income) %></div></div>
+  <div class="kpi bad"><div class="k">إجمالي المصروف</div><div class="v num"><%= fmt(bal.spent) %></div></div>
+  <div class="kpi gold"><div class="k">الرصيد المتاح</div><div class="v num"><%= fmt(bal.balance) %></div></div>
+</div>
+<% if (can('poor.finance')) { %>
+<div class="card"><h2>تسجيل تبرع للصندوق</h2>
+<form method="post" action="/poor/donations" class="fields" data-confirm="تسجيل هذا التبرع في صندوق الفقراء والمساكين؟">
+  <input type="hidden" name="_csrf" value="<%= csrf %>">
+  <div class="field"><label>اسم المتبرع <span class="req">*</span></label><input name="donor_name" required placeholder="أو: فاعل خير"></div>
+  <div class="field"><label>النوع</label><select name="kind"><% L.options('poorKind').forEach(o => { %><option value="<%= o.value %>"><%= o.text %></option><% }) %></select></div>
+  <div class="field"><label>المبلغ (<%= cur %>) <span class="req">*</span></label><input name="amount" required inputmode="decimal"></div>
+  <div class="field"><label>التاريخ</label><input type="date" name="donation_date" required value="<%= U.todayISO() %>"></div>
+  <div class="field"><label>طريقة الدفع</label><select name="method"><% ['cash','bank_transfer','wallet','cheque','other'].forEach(k => { %><option value="<%= k %>"><%= L.label('payout', k) %></option><% }) %></select></div>
+  <div class="field"><label>ملاحظات</label><input name="notes"></div>
+  <div class="field"><label>&nbsp;</label><button class="btn"><%- icon('check') %> حفظ التبرع</button></div>
+</form></div>
+<% } %>
+<div class="card"><h2>التبرعات</h2>
+<div class="tablewrap"><table class="t"><thead><tr><th>الإيصال</th><th>التاريخ</th><th>المتبرع</th><th>النوع</th><th class="num">المبلغ</th><th>سجّله</th><th>الحالة</th><th></th></tr></thead><tbody>
+<% if (!rows.length) { %><tr><td colspan="8" class="empty">لا توجد تبرعات بعد</td></tr><% } %>
+<% rows.forEach(d => { %><tr><td><b><%= d.receipt_no %></b></td><td><%= d.donation_date %></td><td><%= d.donor_name %></td><td><%- badge('poorKind', d.kind) %></td><td class="num"><%= fmt(d.amount) %></td><td class="small"><%= d.by_name || '—' %></td>
+<td><%- d.status === 'collected' ? '<span class="badge success">مُحصّل</span>' : '<span class="badge muted">ملغى</span>' %></td>
+<td><% if (can('poor.finance') && d.status === 'collected') { %><details><summary class="btn sm sec">إلغاء</summary><form method="post" action="/poor/donations/<%= d.id %>/cancel" style="margin-top:.4rem" data-confirm="إلغاء التبرع <%= d.receipt_no %>؟"><input type="hidden" name="_csrf" value="<%= csrf %>"><input name="reason" required placeholder="سبب الإلغاء"><button class="btn sm danger" style="margin-top:.3rem">تأكيد</button></form></details><% } %></td></tr><% }) %>
+</tbody></table></div></div>
+<div class="card"><h2>آخر عمليات الصرف النقدي</h2>
+<table class="t"><thead><tr><th>الحالة</th><th>الشهر</th><th class="num">المبلغ</th><th>التاريخ</th><th></th></tr></thead><tbody>
+<% if (!payments.length) { %><tr><td colspan="5" class="empty">لا توجد عمليات صرف بعد</td></tr><% } %>
+<% payments.forEach(p => { %><tr><td><a href="/poor/cases/<%= p.case_id %>"><%= p.full_name %></a></td><td><%= U.periodLabel(p.period) %></td><td class="num"><%= fmt(p.amount) %></td><td><%= p.pay_date %></td><td><%- p.status === 'paid' ? '' : '<span class="badge muted">ملغى</span>' %></td></tr><% }) %>
+</tbody></table></div>
+<%- include('../partials/foot') %>

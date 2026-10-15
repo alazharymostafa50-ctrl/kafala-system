@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#054834">
 <link rel="stylesheet" href="/static/css/app.css?v=<%= typeof v !== "undefined" ? v : 1 %>">
 </head>
-<body>
+<body class="<%= path.startsWith('/poor') ? 'sec-poor' : '' %>">
 <div class="shell">
 <aside class="sidebar" id="sidebar">
   <div class="brand">
@@ -17,7 +17,19 @@
     <div><b><%= org.name %></b><% if (org.registration) { %><span class="reg"><%= org.registration %></span><% } %><span><%= org.system_name %></span></div>
   </div>
   <nav class="nav">
-    <% const nav = (href, ic, text, perm, extra) => { if (perm && !can(perm)) return ''; const on = (href === '/' ? path === '/' : path.startsWith(href)); return `<a href="${href}" class="${on ? 'on' : ''}" title="${text}">${icon(ic)}<span>${text}</span>${extra || ''}</a>`; } %>
+    <% const nav = (href, ic, text, perm, extra) => { if (perm && !can(perm)) return ''; const on = (href === '/' ? path === '/' : (href === '/poor' ? path === '/poor' : path.startsWith(href))); return `<a href="${href}" class="${on ? 'on' : ''}" title="${text}">${icon(ic)}<span>${text}</span>${extra || ''}</a>`; } %>
+    <% const inPoor = path.startsWith('/poor'); %>
+    <% if (inPoor) { %>
+    <div class="secname poor"><%- icon('donation') %><span>قسم الفقراء والمساكين</span></div>
+    <%- nav('/poor', 'home', 'الرئيسية', 'poor.view') %>
+    <%- nav('/poor/cases', 'family', 'الحالات', 'poor.view') %>
+    <%- nav('/poor/monthly', 'calendar', 'الإعانة النقدية الشهرية', 'poor.view') %>
+    <%- nav('/poor/gifts', 'doc', 'العطاء العيني', 'poor.view') %>
+    <%- nav('/poor/donations', 'wallet', 'صندوق القسم', 'poor.view') %>
+    <% if (can('poor.edit')) { %><%- nav('/trash', 'trash', 'سلة المحذوفات') %><% } %>
+    <% if (can('dashboard.view') || can('families.view')) { %><a class="switch" href="/"><%- icon('sponsor') %><span>الانتقال إلى كفالة الأيتام</span></a><% } %>
+    <% } else { %>
+    <% if (can('poor.view')) { %><a class="switch poor" href="/poor"><%- icon('donation') %><span>قسم الفقراء والمساكين</span></a><% } %>
     <%- nav('/', 'home', 'الرئيسية', 'dashboard.view') %>
     <div class="grp">الأسر والكفلاء</div>
     <%- nav('/families', 'family', 'الأسر والأيتام', 'families.view') %>
@@ -31,6 +43,7 @@
     <% if (can('families.archive') || can('sponsors.edit')) { %><%- nav('/trash', 'trash', 'سلة المحذوفات') %><% } %>
     <%- nav('/finance', 'wallet', 'الأرصدة', 'finance.view') %>
     <%- nav('/reports', 'report', 'التقارير والطباعة', 'reports.view') %>
+    <% } %>
     <div class="grp">النظام</div>
     <%- nav('/notifications', 'bell', 'التنبيهات', null, notifCount ? `<i class="badge-n">${notifCount}</i>` : '') %>
     <%- nav('/import', 'import', 'استيراد من Excel', 'import.run') %>
@@ -43,7 +56,11 @@
 <div class="main">
   <header class="topbar">
     <button class="iconbtn" type="button" data-toggle-nav aria-label="القائمة"><%- icon('menu') %></button>
-    <% if (can('families.view')) { %>
+    <% if (path.startsWith('/poor')) { %>
+    <form class="qs" action="/poor/cases" method="get" role="search">
+      <input type="search" name="q" placeholder="بحث في الحالات: الاسم، الرقم القومي، الهاتف" aria-label="بحث عن حالة">
+    </form>
+    <% } else if (can('families.view')) { %>
     <form class="qs" action="/families" method="get" role="search">
       <input type="search" name="q" placeholder="بحث سريع: رقم الملف، الاسم، الجوال" aria-label="بحث عن أسرة">
     </form>

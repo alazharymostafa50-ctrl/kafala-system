@@ -86,7 +86,7 @@ async function completeLogin(req, res, u) {
   if (remember) { req.session.cookie.maxAge = REMEMBER_DAYS * 24 * 60 * 60 * 1000; req.session.remember = true; }
   await db.query('UPDATE users SET failed_attempts=0, locked_until=NULL, last_login_at=now() WHERE id=$1', [u.id]);
   await audit.log({ ip: req.ip, user: u }, 'login', 'user', u.id, { after: { remember } });
-  res.redirect(returnTo && returnTo.startsWith('/') && !returnTo.startsWith('//') ? returnTo : '/');
+  res.redirect(returnTo && returnTo.startsWith('/') && !returnTo.startsWith('//') ? returnTo : '/choose');
 }
 
 router.post('/logout', h(async (req, res) => {

@@ -18,7 +18,7 @@ test('الصفحات المحمية تعيد التوجيه لتسجيل الد�
 test('تسجيل الدخول والخروج', async () => {
   const c = await login('admin');
   assert.equal(c.res.status, 302);
-  assert.equal(c.res.headers.location, '/');
+  assert.equal(c.res.headers.location, '/choose');
   const home = await c.get('/');
   assert.equal(home.status, 200);
   assert.match(home.text, /لوحة التحكم/);
@@ -39,7 +39,7 @@ test('كلمة مرور خاطئة تُرفض ويُقفل الحساب بعد 5
   assert.equal(c.res.headers.location, '/login');
   await db.query(`UPDATE users SET locked_until=NULL, failed_attempts=0 WHERE username='auditor'`);
   const ok = await login('auditor');
-  assert.equal(ok.res.headers.location, '/');
+  assert.equal(ok.res.headers.location, '/choose');
 });
 
 test('رفض الطلبات بدون رمز CSRF', async () => {
@@ -133,7 +133,7 @@ test('التفعيل الأول: يتطلب مفتاح التفعيل ويتعط
   assert.equal(again.headers.location, '/login');
   assert.equal((await db.one('SELECT count(*)::int AS n FROM users')).n, 1);
   const c = await login('boss', 'Boss12345pass');
-  assert.equal(c.res.headers.location, '/');
+  assert.equal(c.res.headers.location, '/choose');
 });
 
 test('«تذكرني» يمد الجلسة 30 يومًا، وبدونه تبقى الجلسة قصيرة', async () => {
@@ -161,7 +161,7 @@ test('استعادة حساب المدير بمفتاح التفعيل تفك ا
   assert.equal((await login('boss', 'Fresh12345pass')).res.headers.location, '/login', 'المفتاح الخاطئ لا يغير شيئًا');
   const r = await anon.post('/recover').type('form').send({ _csrf: csrf, setup_key: 'setup-key-123456', username: 'BOSS', password: 'Fresh12345pass', confirm_password: 'Fresh12345pass' });
   assert.equal(r.headers.location, '/login');
-  assert.equal((await login('boss', 'Fresh12345pass')).res.headers.location, '/');
+  assert.equal((await login('boss', 'Fresh12345pass')).res.headers.location, '/choose');
   assert.ok(await db.one(`SELECT 1 FROM audit_logs WHERE action='admin_recovered'`));
 });
 

@@ -1,0 +1,26 @@
+<%- include('../partials/head', { title }) %>
+<div class="pagehead"><div><h1>حالات الفقراء والمساكين</h1><p>مرتبة أبجديًا. ابحث بالاسم أو الرقم القومي أو الهاتف.</p></div>
+<% if (can('poor.edit')) { %><a class="btn" href="/poor/cases/new"><%- icon('plus') %> إضافة حالة</a><% } %></div>
+<form class="filters card" method="get">
+  <div class="field grow"><label>بحث</label><input type="search" name="q" value="<%= query.q || '' %>" placeholder="الاسم أو الرقم القومي أو الهاتف"></div>
+  <div class="field"><label>المنطقة</label><select name="area"><option value="">الكل</option><% L.options('area').forEach(o => { %><option value="<%= o.value %>" <%= query.area===o.value?'selected':'' %>><%= o.text %></option><% }) %></select></div>
+  <div class="field"><label>نوع العطاء</label><select name="give"><option value="">الكل</option><% L.options('giveType').forEach(o => { %><option value="<%= o.value %>" <%= query.give===o.value?'selected':'' %>><%= o.text %></option><% }) %></select></div>
+  <div class="field"><label>سبب الاستحقاق</label><select name="reason"><option value="">الكل</option><% L.options('poorReason').forEach(o => { %><option value="<%= o.value %>" <%= query.reason===o.value?'selected':'' %>><%= o.text %></option><% }) %></select></div>
+  <div class="field"><label>الحالة</label><select name="status"><option value="">الكل</option><option value="active" <%= query.status==='active'?'selected':'' %>>نشطة</option><option value="stopped" <%= query.status==='stopped'?'selected':'' %>>متوقفة</option></select></div>
+  <button class="btn sec"><%- icon('search') %> بحث</button>
+</form>
+<div class="tablewrap"><table class="t">
+<thead><tr><th>رقم الحالة</th><th>الاسم</th><th>الرقم القومي</th><th>الهاتف</th><th>المنطقة</th><th>سبب الاستحقاق</th><th>نوع العطاء</th><th class="num">المبلغ الشهري</th><th>الحالة</th></tr></thead>
+<tbody>
+<% if (!rows.length) { %><tr><td colspan="9" class="empty">لا توجد حالات</td></tr><% } %>
+<% rows.forEach(c => { %><tr>
+  <td><a href="/poor/cases/<%= c.id %>"><b><%= c.case_no %></b></a></td>
+  <td><a href="/poor/cases/<%= c.id %>"><b><%= c.full_name %></b></a></td>
+  <td class="num"><%= c.national_id || '—' %></td><td class="num"><%= c.phone || '—' %></td>
+  <td><%= L.label('area', c.area) %></td><td class="small"><%= L.label('poorReason', c.reason) %><%= c.reason_note ? ' — ' + c.reason_note : '' %></td>
+  <td><%- badge('giveType', c.give_type) %></td><td class="num"><%= c.give_type === 'in_kind' ? '—' : fmt(c.monthly_amount) %></td>
+  <td><%- badge('poorStatus', c.status) %></td></tr><% }) %>
+</tbody>
+<tfoot><tr><td colspan="7">العدد: <%= rows.length %> حالة</td><td class="num"><%= fmt(U.fromCents(rows.filter(r => r.status === 'active' && r.give_type !== 'in_kind').reduce((a, r) => a + U.toCents(r.monthly_amount), 0))) %></td><td></td></tr></tfoot>
+</table></div>
+<%- include('../partials/foot') %>

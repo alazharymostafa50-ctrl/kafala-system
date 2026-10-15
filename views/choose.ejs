@@ -1,0 +1,7 @@
+<%- include('partials/head', { title }) %>
+<div class="pagehead" style="justify-content:center;text-align:center"><div><h1>أهلًا <%= user.full_name.split(' ')[0] %>، اختر القسم</h1><p>يمكنك الانتقال بين القسمين في أي وقت من القائمة الجانبية.</p></div></div>
+<div class="choose">
+  <a class="k" href="/"><%- icon('family') %><b>كفالة الأيتام</b><span>الأسر والأيتام، الكفلاء، الصرف الشهري للكفالة والإعانة، الكشوف والتقارير.</span><span class="cnt"><%= stats.families %> أسرة نشطة</span></a>
+  <a class="p" href="/poor"><%- icon('donation') %><b>الفقراء والمساكين</b><span>الحالات، الإعانة النقدية الشهرية، العطاء العيني، وصندوق القسم المستقل.</span><span class="cnt"><%= stats.cases %> حالة نشطة</span></a>
+</div>
+<%- include('partials/foot') %>
