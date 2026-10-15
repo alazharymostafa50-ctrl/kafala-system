@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>نسيت كلمة المرور — <%= org.system_name %></title>
+<link rel="icon" href="/static/img/icon-32.png" type="image/png">
+<link rel="stylesheet" href="/static/css/app.css?v=<%= typeof v !== "undefined" ? v : 1 %>">
+</head>
+<body>
+<div class="authpage">
+  <div class="authcard">
+    <img src="<%= org.logo %>" alt="شعار الجمعية">
+    <h1>نسيت كلمة المرور</h1>
+    <div class="muted small">اكتب اسم المستخدم وواحد من <b>أكواد الاسترجاع</b> اللي حفظتها، واختار كلمة مرور جديدة. كل كود بيشتغل مرة واحدة بس.</div>
+    <% if (flash) { %><div class="alert <%= flash.type %>" style="margin-top:1rem"><%= flash.msg %></div><% } %>
+    <form method="post" action="/forgot" autocomplete="off">
+      <input type="hidden" name="_csrf" value="<%= csrf %>">
+      <div class="field"><label>اسم المستخدم</label><input name="username" required dir="ltr" autocomplete="username"></div>
+      <div class="field"><label>كود الاسترجاع (مثال: ABCD-2345)</label><input name="code" required dir="ltr" maxlength="12" style="letter-spacing:.15em;text-transform:uppercase"></div>
+      <div class="field"><label>كلمة المرور الجديدة (10 أحرف على الأقل، حروف وأرقام)</label><input name="password" type="password" required minlength="10" dir="ltr" autocomplete="new-password"></div>
+      <div class="field"><label>تأكيد كلمة المرور الجديدة</label><input name="confirm_password" type="password" required dir="ltr" autocomplete="new-password"></div>
+      <button class="btn" type="submit">تعيين كلمة المرور الجديدة</button>
+    </form>
+    <div class="alert info" style="margin-top:1rem;text-align:right">
+      <b>معندكش أكواد استرجاع؟</b><br>
+      • الموظف: اطلب من مدير النظام يعمل لك كلمة مرور جديدة من «المستخدمين».<br>
+      • مدير النظام: استخدم <a href="/recover">استعادة حساب المدير بمفتاح التفعيل</a>.
+    </div>
+    <p class="small" style="margin-top:1rem"><a href="/login">العودة لتسجيل الدخول</a></p>
+  </div>
+</div>
+<script src="/static/js/app.js?v=<%= typeof v !== "undefined" ? v : 1 %>"></script>
+</body>
+</html>

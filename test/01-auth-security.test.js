@@ -164,3 +164,30 @@ test('استعادة حساب المدير بمفتاح التفعيل تفك ا
   assert.equal((await login('boss', 'Fresh12345pass')).res.headers.location, '/');
   assert.ok(await db.one(`SELECT 1 FROM audit_logs WHERE action='admin_recovered'`));
 });
+
+test('استعادة كلمة المرور بكود استرجاع يُستخدم مرة واحدة', async () => {
+  const { login, db, getApp } = require('./helpers');
+  const request = require('supertest');
+  require('../src/routes/auth')._resetIpLimits();
+  const u = await login('boss', 'Fresh12345pass');
+  const r = await u.post('/account/recovery-codes', { current_password: 'Fresh12345pass' });
+  assert.equal(r.status, 200, String(r.headers.location));
+  const codes = [...r.text.matchAll(/\b([A-Z2-9]{4}-[A-Z2-9]{4})\b/g)].map((m) => m[1]);
+  assert.equal(new Set(codes).size, 8);
+  const n = await db.one(`SELECT count(*)::int AS n FROM user_recovery_codes c JOIN users u ON u.id=c.user_id WHERE u.username='boss' AND used_at IS NULL`);
+  assert.equal(n.n, 8);
+  // زائر غير مسجل يستخدم الكود
+  const agent = request.agent(getApp());
+  const page = await agent.get('/forgot');
+  const csrf = page.text.match(/name="_csrf" value="([^"]+)"/)[1];
+  const bad = await agent.post('/forgot').type('form').send({ _csrf: csrf, username: 'boss', code: 'ZZZZ-ZZZZ', password: 'NewPass12345', confirm_password: 'NewPass12345' });
+  assert.equal(bad.headers.location, '/forgot');
+  const ok = await agent.post('/forgot').type('form').send({ _csrf: csrf, username: 'boss', code: codes[0].toLowerCase(), password: 'NewPass12345', confirm_password: 'NewPass12345' });
+  assert.equal(ok.headers.location, '/login');
+  const again = await agent.post('/forgot').type('form').send({ _csrf: csrf, username: 'boss', code: codes[0], password: 'Other12345pass', confirm_password: 'Other12345pass' });
+  assert.equal(again.headers.location, '/forgot');
+  const bcrypt = require('bcryptjs');
+  const row = await db.one(`SELECT password_hash FROM users WHERE username='boss'`);
+  assert.ok(await bcrypt.compare('NewPass12345', row.password_hash));
+  await db.query(`UPDATE users SET password_hash=$1 WHERE username='boss'`, [await bcrypt.hash('Test12345pass', 4)]);
+});

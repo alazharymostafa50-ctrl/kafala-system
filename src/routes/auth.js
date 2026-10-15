@@ -94,7 +94,10 @@ router.post('/logout', h(async (req, res) => {
   req.session.destroy(() => { res.clearCookie('kafala.sid'); res.redirect('/login'); });
 }));
 
-router.get('/account/password', requireLogin, (req, res) => res.render('auth/password', { title: 'تغيير كلمة المرور' }));
+router.get('/account/password', requireLogin, h(async (req, res) => {
+  const rc = await db.one('SELECT count(*)::int AS n FROM user_recovery_codes WHERE user_id=$1 AND used_at IS NULL', [req.user.id]);
+  res.render('auth/password', { title: 'تغيير كلمة المرور', codesLeft: rc.n });
+}));
 router.post('/account/password', requireLogin, h(async (req, res) => {
   const u = await db.one('SELECT * FROM users WHERE id=$1', [req.user.id]);
   if (!(await bcrypt.compare(String(req.body.current_password || ''), u.password_hash))) throw new UserError('كلمة المرور الحالية غير صحيحة');
@@ -107,6 +110,62 @@ router.post('/account/password', requireLogin, h(async (req, res) => {
   await audit.log(req, 'password_changed', 'user', u.id);
   flash(req, 'success', 'تم تغيير كلمة المرور بنجاح');
   res.redirect('/');
+}));
+
+// ---------- أكواد الاسترجاع (لاستعادة كلمة المرور دون مفتاح التفعيل) ----------
+const crypto = require('crypto');
+const CODE_ALPHA = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+const RECOVERY_COUNT = 8;
+const normCode = (c) => String(c || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+function newCode() {
+  const b = crypto.randomBytes(8);
+  const s = [...b].map((x) => CODE_ALPHA[x % CODE_ALPHA.length]).join('');
+  return s.slice(0, 4) + '-' + s.slice(4);
+}
+
+router.post('/account/recovery-codes', requireLogin, h(async (req, res) => {
+  const u = await db.one('SELECT password_hash FROM users WHERE id=$1', [req.user.id]);
+  if (!(await bcrypt.compare(String(req.body.current_password || ''), u.password_hash))) throw new UserError('كلمة المرور الحالية غير صحيحة');
+  const codes = Array.from({ length: RECOVERY_COUNT }, newCode);
+  const hashes = await Promise.all(codes.map((c) => bcrypt.hash(normCode(c), 10)));
+  await db.tx(async (c) => {
+    await c.query('DELETE FROM user_recovery_codes WHERE user_id=$1', [req.user.id]);
+    for (const hsh of hashes) await c.query('INSERT INTO user_recovery_codes (user_id, code_hash) VALUES ($1,$2)', [req.user.id, hsh]);
+  });
+  await audit.log(req, 'recovery_codes_generated', 'user', req.user.id);
+  res.render('auth/recovery-codes', { title: 'أكواد استرجاع كلمة المرور', codes });
+}));
+
+router.get('/forgot', (req, res) => {
+  if (req.user) return res.redirect('/');
+  res.render('auth/forgot', { title: 'نسيت كلمة المرور' });
+});
+router.post('/forgot', h(async (req, res) => {
+  const fail = (msg) => { ipFail(req.ip); flash(req, 'error', msg); res.redirect('/forgot'); };
+  if (ipLimited(req.ip)) return fail('محاولات كثيرة من هذا الجهاز. انتظر 15 دقيقة ثم حاول مجددًا.');
+  const username = String(req.body.username || '').trim().toLowerCase();
+  const code = normCode(req.body.code);
+  const u = await db.one('SELECT * FROM users WHERE lower(username)=$1 AND is_active', [username]);
+  const rows = u ? await db.many('SELECT id, code_hash FROM user_recovery_codes WHERE user_id=$1 AND used_at IS NULL', [u.id]) : [];
+  let hit = null;
+  for (const r of rows) { if (code.length === 8 && await bcrypt.compare(code, r.code_hash)) { hit = r; break; } }
+  if (!u || !hit) {
+    if (u) await audit.log({ ip: req.ip, user: { id: u.id, username: u.username } }, 'recovery_code_failed', 'user', u.id);
+    return fail('اسم المستخدم أو كود الاسترجاع غير صحيح');
+  }
+  try { passwordPolicy(req.body.password); } catch (e) { flash(req, 'error', e.message); return res.redirect('/forgot'); }
+  if (req.body.password !== req.body.confirm_password) { flash(req, 'error', 'تأكيد كلمة المرور غير مطابق'); return res.redirect('/forgot'); }
+  const hash = await bcrypt.hash(req.body.password, 12);
+  await db.tx(async (c) => {
+    const used = await c.one('UPDATE user_recovery_codes SET used_at=now() WHERE id=$1 AND used_at IS NULL RETURNING id', [hit.id]);
+    if (!used) throw new UserError('هذا الكود استُخدم من قبل');
+    await c.query('UPDATE users SET password_hash=$2, must_change_password=FALSE, failed_attempts=0, locked_until=NULL, updated_at=now() WHERE id=$1', [u.id, hash]);
+    await c.query(`DELETE FROM user_sessions WHERE (sess->>'userId')::int = $1`, [u.id]);
+  });
+  const left = await db.one('SELECT count(*)::int AS n FROM user_recovery_codes WHERE user_id=$1 AND used_at IS NULL', [u.id]);
+  await audit.log({ ip: req.ip, user: { id: u.id, username: u.username } }, 'password_reset_by_recovery_code', 'user', u.id, { after: { codes_left: left.n } });
+  flash(req, 'success', `تم تعيين كلمة المرور الجديدة. سجّل الدخول الآن. (متبقي لك ${left.n} أكواد استرجاع)`);
+  res.redirect('/login');
 }));
 
 // إعداد المصادقة الثنائية
@@ -135,5 +194,6 @@ router.post('/account/2fa', requireLogin, h(async (req, res) => {
   res.redirect('/');
 }));
 
+router._resetIpLimits = () => ipHits.clear(); // للاختبارات فقط
 module.exports = router;
 module.exports.passwordPolicy = passwordPolicy;
