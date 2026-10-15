@@ -62,8 +62,10 @@ table.k tfoot tr.grand td { background: #054834 !important; color: #fff; border-
 @media print { .sub2, .old { display: none; } }
 </style>
 <% if (!forPdf) { %>
-<div class="sub2">عدد الأسر في الصفحة:
-  <% [15, 20].forEach(n => { %><a href="?per=<%= n %>" <%- per === n ? 'style="text-decoration:underline"' : '' %>><%= n %> أسرة</a><% }) %>
+<div class="sub2"><b>الكشف:</b>
+  <% Object.entries(kinds).forEach(([k, kk]) => { %><a href="/entitlements/<%= period %>/receipts-compact?type=<%= k %>&per=<%= per %>" <%- kind === k ? 'style="text-decoration:underline;color:#b8963e"' : '' %>><%= kk.short %></a><% }) %>
+  · عدد الأسر في الصفحة:
+  <% [15, 20].forEach(n => { %><a href="?type=<%= kind %>&per=<%= n %>" <%- per === n ? 'style="text-decoration:underline"' : '' %>><%= n %> أسرة</a><% }) %>
   · <a href="/statements">أرشيف كشوف كل الشهور</a>
   · <span>نسخة رقم <%= st.version %> محفوظة <%= savedAt %></span>
 </div>
@@ -79,7 +81,7 @@ table.k tfoot tr.grand td { background: #054834 !important; color: #fff; border-
       <% if (org.registration) { %><div class="r"><%= org.registration %></div><% } %>
       <% if (branch) { %><div class="b"><%= branch %></div><% } %>
     </div>
-    <div class="doc"><div class="h">كشف استلام الكفالة والإعانة</div><div class="m">شهر <%= U.periodLabel(period) %></div></div>
+    <div class="doc"><div class="h"><%= kinds[kind].title %></div><div class="m">شهر <%= U.periodLabel(period) %></div></div>
   </div>
   <div class="rule"></div>
   <div class="info">
@@ -88,24 +90,29 @@ table.k tfoot tr.grand td { background: #054834 !important; color: #fff; border-
     <span>صفحة <b><%= p + 1 %></b> من <b><%= pages.length %></b></span>
   </div>
   <table class="k">
-    <colgroup><col class="c-n"><col><col class="c-ph"><col class="c-mo"><col class="c-mo"><col class="c-due"><col class="c-sig"></colgroup>
+    <% const split = kind === 'all'; %>
+    <colgroup><col class="c-n"><col><col class="c-ph"><% if (split) { %><col class="c-mo"><col class="c-mo"><% } %><col class="c-due"><col class="c-sig"></colgroup>
     <thead>
+      <% if (split) { %>
       <tr><th rowspan="2">م</th><th rowspan="2">اسم ولي الأمر</th><th rowspan="2">رقم التليفون</th><th colspan="2">المبلغ</th><th rowspan="2">المبلغ المستحق</th><th rowspan="2">التوقيع بالاستلام</th></tr>
       <tr><th class="sub">كفالة</th><th class="sub">إعانة</th></tr>
+      <% } else { %>
+      <tr><th>م</th><th>اسم ولي الأمر</th><th>رقم التليفون</th><th>مبلغ <%= kinds[kind].short %></th><th>التوقيع بالاستلام</th></tr>
+      <% } %>
     </thead>
     <tbody>
     <% list.forEach((r, i) => { %>
       <tr><td class="n"><%= p * per + i + 1 %></td><td class="nm"><%= r.guardian %></td><td class="c num"><%= r.phone %></td>
-      <td class="c num"><%- C(r.kafala) ? fmt(r.kafala) : '<span class="dash">—</span>' %></td><td class="c num"><%- C(r.aid) ? fmt(r.aid) : '<span class="dash">—</span>' %></td>
+      <% if (split) { %><td class="c num"><%- C(r.kafala) ? fmt(r.kafala) : '<span class="dash">—</span>' %></td><td class="c num"><%- C(r.aid) ? fmt(r.aid) : '<span class="dash">—</span>' %></td><% } %>
       <td class="due num"><%= fmt(r.due) %></td><td class="sig"></td></tr>
     <% }) %>
     </tbody>
     <tfoot>
-      <tr><td colspan="3">إجمالي الصفحة (<%= list.length %> أسرة)</td><td class="c num"><%= fmt(U.fromCents(sum(list, 'kafala'))) %></td><td class="c num"><%= fmt(U.fromCents(sum(list, 'aid'))) %></td><td class="c num"><%= fmt(U.fromCents(sum(list, 'due'))) %></td><td></td></tr>
-      <% if (last && pages.length > 1) { %><tr class="grand"><td colspan="3">الإجمالي الكلي (<%= rows.length %> أسرة)</td><td class="c num"><%= fmt(U.fromCents(sum(rows, 'kafala'))) %></td><td class="c num"><%= fmt(U.fromCents(sum(rows, 'aid'))) %></td><td class="c num"><%= fmt(U.fromCents(sum(rows, 'due'))) %></td><td></td></tr><% } %>
+      <tr><td colspan="3">إجمالي الصفحة (<%= list.length %> أسرة)</td><% if (split) { %><td class="c num"><%= fmt(U.fromCents(sum(list, 'kafala'))) %></td><td class="c num"><%= fmt(U.fromCents(sum(list, 'aid'))) %></td><% } %><td class="c num"><%= fmt(U.fromCents(sum(list, 'due'))) %></td><td></td></tr>
+      <% if (last && pages.length > 1) { %><tr class="grand"><td colspan="3">الإجمالي الكلي (<%= rows.length %> أسرة)</td><% if (split) { %><td class="c num"><%= fmt(U.fromCents(sum(rows, 'kafala'))) %></td><td class="c num"><%= fmt(U.fromCents(sum(rows, 'aid'))) %></td><% } %><td class="c num"><%= fmt(U.fromCents(sum(rows, 'due'))) %></td><td></td></tr><% } %>
     </tfoot>
   </table>
-  <% if (last) { %><div class="words">إجمالي الكشف: <b><%= words(sum(rows, 'due')) %></b></div><% } %>
+  <% if (last) { %><div class="words">إجمالي <%= kinds[kind].title %>: <b><%= words(sum(rows, 'due')) %></b></div><% } %>
   <div class="signs"><div>أمين الصندوق</div><div>مسؤول الكفالات</div><div>رئيس مجلس الإدارة</div><div>ختم الجمعية</div></div>
   <div class="meta"><span>نسخة محفوظة رقم <%= st.version %> — <%= savedAt %></span><span><%= fullName %></span></div>
 </div>

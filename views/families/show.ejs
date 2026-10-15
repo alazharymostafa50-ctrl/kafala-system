@@ -2,7 +2,7 @@
 <% const g = f.guardian; %>
 <div class="pagehead">
   <div><div class="crumbs"><a href="/families">الأسر</a> / <%= f.file_no %></div>
-    <h1><%= f.family_name %> <%- badge('familyStatus', f.status) %></h1>
+    <h1><%= f.family_name %> <%- badge('familyStatus', f.status) %> <%- badge('supportType', f.support_type) %><% if (f.is_demo) { %> <span class="badge warning">تجريبي</span><% } %></h1>
     <p>رقم الملف <b><%= f.file_no %></b> · فُتح في <%= f.opened_on %> · <%= L.label('calcMethod', f.calc_method) %></p></div>
   <div class="btns">
     <% if (can('families.edit')) { %><a class="btn sec" href="/families/<%= f.id %>/edit"><%- icon('edit') %> تعديل</a>
@@ -16,9 +16,10 @@
 <div class="grid g2">
   <div class="card"><h2>بيانات الأسرة</h2><dl class="dl">
     <dt>العنوان</dt><dd><%= [f.address, f.district, f.city].filter(Boolean).join('، ') || '—' %></dd>
-    <dt>طريقة الكفالة</dt><dd><%= L.label('calcMethod', f.calc_method) %></dd>
-    <% if (f.calc_method !== 'per_member') { %><dt>الكفالة الشهرية للأسرة</dt><dd><b><%- money(f.monthly_amount) %></b> <%= cur %></dd><% } %>
-    <dt>الإعانة الشهرية</dt><dd><b><%- money(f.aid_amount) %></b> <%= cur %><%= f.aid_note ? ' — ' + f.aid_note : '' %></dd>
+    <dt>البند</dt><dd><%- badge('supportType', f.support_type) %></dd>
+    <% if (f.support_type !== 'aid') { %><dt>طريقة الكفالة</dt><dd><%= L.label('calcMethod', f.calc_method) %></dd>
+    <% if (f.calc_method !== 'per_member') { %><dt>الكفالة الشهرية للأسرة</dt><dd><b><%- money(f.monthly_amount) %></b> <%= cur %></dd><% } %><% } %>
+    <% if (f.support_type !== 'kafala') { %><dt>الإعانة الشهرية</dt><dd><b><%- money(f.aid_amount) %></b> <%= cur %><%= f.aid_note ? ' — ' + f.aid_note : '' %></dd><% } %>
     <dt>عدد الأفراد</dt><dd><%= members.length %> (الأيتام: <%= members.filter(m => m.is_orphan).length %>، المستحقون حاليًا: <%= members.filter(m => ['eligible','eligible_university'].includes(m.eligibility_status)).length %>)</dd>
     <dt>آخر مراجعة</dt><dd><%= f.last_review_on || '—' %></dd>
     <dt>الموظف المسؤول</dt><dd><%= f.responsible_name || '—' %></dd>

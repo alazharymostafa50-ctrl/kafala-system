@@ -5,24 +5,33 @@
 <form method="post" action="<%= isNew ? '/families' : '/families/' + f.id %>" class="simpleform">
 <input type="hidden" name="_csrf" value="<%= csrf %>">
 
-<fieldset><legend><span class="stepno">1</span> الأسرة وولي الأمر</legend><div class="fields">
+<% const st = old('support_type', f.support_type || 'kafala'); %>
+<fieldset class="money"><legend><span class="stepno">1</span> البند (الأسرة بتاخد إيه؟) <span class="req">*</span></legend>
+  <div class="choice big3">
+    <label class="choicebox"><input type="radio" name="support_type" value="kafala" <%= st==='kafala'?'checked':'' %>> <span><b>كفالة</b><small>كفالة أيتام فقط</small></span></label>
+    <label class="choicebox"><input type="radio" name="support_type" value="aid" <%= st==='aid'?'checked':'' %>> <span><b>إعانة</b><small>مساعدة شهرية فقط</small></span></label>
+    <label class="choicebox"><input type="radio" name="support_type" value="both" <%= st==='both'?'checked':'' %>> <span><b>كفالة وإعانة</b><small>الاتنين مع بعض</small></span></label>
+  </div>
+</fieldset>
+
+<fieldset><legend><span class="stepno">2</span> الأسرة وولي الأمر</legend><div class="fields">
   <div class="field"><label>اسم الأسرة <span class="req">*</span></label><input name="family_name" required maxlength="150" placeholder="مثال: أسرة محمد السيد" value="<%= old('family_name', f.family_name) %>"></div>
   <div class="field"><label>اسم ولي الأمر (رباعي) <span class="req">*</span></label><input name="g_full_name" required value="<%= old('g_full_name', g.full_name) %>"></div>
   <div class="field"><label>صلته بالأبناء</label><input name="g_relation" placeholder="الأم، الجد، العم..." value="<%= old('g_relation', g.relation) %>"></div>
-  <div class="field"><label>رقم الجوال <span class="req">*</span></label><input type="tel" name="g_phone" required dir="ltr" value="<%= old('g_phone', g.phone) %>"></div>
-  <div class="field"><label>المدينة / القرية</label><input name="city" value="<%= old('city', f.city) %>"></div>
+  <div class="field"><label>رقم التليفون <span class="req">*</span></label><input type="tel" name="g_phone" required dir="ltr" value="<%= old('g_phone', g.phone) %>"></div>
+  <div class="field"><label>البلد / القرية</label><input name="city" value="<%= old('city', isNew ? (f.city || org.default_city || '') : f.city) %>"></div>
   <div class="field"><label>العنوان</label><input name="address" value="<%= old('address', f.address) %>"></div>
 </div></fieldset>
 
-<fieldset class="money"><legend><span class="stepno">2</span> الكفالة والإعانة الشهرية</legend><div class="fields">
-  <div class="field wide"><label>طريقة حساب الكفالة <span class="req">*</span></label>
+<fieldset class="money"><legend><span class="stepno">3</span> المبالغ الشهرية</legend><div class="fields">
+  <div class="field wide" data-show-when="support_type=kafala|both"><label>طريقة حساب الكفالة <span class="req">*</span></label>
     <div class="choice">
       <% L.options('calcMethod').forEach(o => { %><label class="choicebox"><input type="radio" name="calc_method" value="<%= o.value %>" <%= old('calc_method', f.calc_method || 'family_fixed')===o.value?'checked':'' %>> <span><%= o.text %></span></label><% }) %>
     </div>
     <div class="hint">«لكل يتيم»: يُكتب مبلغ كل يتيم في بياناته، ويتغير المجموع تلقائيًا عند تغير الاستحقاق.</div></div>
-  <div class="field" data-show-when="calc_method=family_fixed|mixed"><label>مبلغ الكفالة الشهرية (<%= cur %>)</label><input name="monthly_amount" inputmode="decimal" value="<%= old('monthly_amount', f.monthly_amount || '0') %>"></div>
-  <div class="field"><label>مبلغ الإعانة الشهرية (<%= cur %>)</label><input name="aid_amount" inputmode="decimal" value="<%= old('aid_amount', f.aid_amount || '0') %>"><div class="hint">مساعدة شهرية إضافية للأسرة غير الكفالة. اتركها 0 إن لم توجد.</div></div>
-  <div class="field"><label>سبب / نوع الإعانة</label><input name="aid_note" placeholder="مثال: إيجار، علاج، دراسة" value="<%= old('aid_note', f.aid_note) %>"></div>
+  <div class="field" data-show-when="support_type=kafala|both"><div data-show-when="calc_method=family_fixed|mixed"><label>مبلغ الكفالة الشهرية (<%= cur %>)</label><input name="monthly_amount" inputmode="decimal" value="<%= old('monthly_amount', f.monthly_amount || '0') %>"></div></div>
+  <div class="field" data-show-when="support_type=aid|both"><label>مبلغ الإعانة الشهرية (<%= cur %>) <span class="req">*</span></label><input name="aid_amount" inputmode="decimal" value="<%= old('aid_amount', f.aid_amount || '0') %>"></div>
+  <div class="field" data-show-when="support_type=aid|both"><label>سبب / نوع الإعانة</label><input name="aid_note" placeholder="مثال: إيجار، علاج، دراسة" value="<%= old('aid_note', f.aid_note) %>"></div>
 </div></fieldset>
 
 <details class="more"><summary>بيانات إضافية (اختيارية)</summary>

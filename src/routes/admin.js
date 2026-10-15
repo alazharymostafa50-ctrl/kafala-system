@@ -150,6 +150,7 @@ router.post('/admin/settings/org', can('settings.manage'), logoUpload, h(async (
     name: U.str(req.body.name, { required: true, max: 150, label: 'اسم الجمعية' }),
     subtitle: U.str(req.body.subtitle, { max: 200 }) || '',
     registration: U.str(req.body.registration, { max: 120 }) || '',
+    default_city: U.str(req.body.default_city, { max: 80 }) || '',
     system_name: U.str(req.body.system_name, { required: true, max: 100, label: 'اسم النظام' }),
     program_name: U.str(req.body.program_name, { max: 100 }) || '',
     phone: U.str(req.body.phone, { max: 60 }) || '',
@@ -187,7 +188,7 @@ router.post('/admin/settings/rules', can('settings.manage'), h(async (req, res) 
   const f = {
     ...curF,
     separation_of_duties: b.separation_of_duties === '1', disbursement_requires_approval: b.disbursement_requires_approval === '1',
-    allow_partial_disbursement: b.allow_partial_disbursement === '1', allow_general_fund_for_kafala: b.allow_general_fund_for_kafala === '1',
+    allow_partial_disbursement: b.allow_partial_disbursement === '1', allow_general_fund_for_kafala: b.allow_general_fund_for_kafala === '1', auto_generate: b.auto_generate === '1',
   };
   const docTypes = ['guardian_id', 'member_id', 'birth_certificate', 'orphan_proof', 'guardianship', 'bank_document'];
   const d = { ...curD, max_size_mb: int(b.max_size_mb, 1, 25, 'الحجم الأقصى'),

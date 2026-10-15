@@ -8,6 +8,7 @@ const { h, can, flash } = require('../middleware');
 router.get('/', h(async (req, res) => {
   if (!req.perms.has('dashboard.view')) return res.render('home-basic', { title: 'الرئيسية' });
   const period = U.validPeriod(req.query.period) ? req.query.period : U.currentPeriod();
+  try { await require('../lib/entitlements').autoSync(period); } catch (e) { console.error('الحساب التلقائي:', e.message); }
   const d = await stats.dashboard(period);
   const chart = await stats.chartSeries(period);
   const showFin = req.perms.has('finance.view') || req.perms.has('donations.view');

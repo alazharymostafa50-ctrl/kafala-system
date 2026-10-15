@@ -226,3 +226,11 @@ dialog.confirm .btns { margin-top: 1rem; }
   .main { margin: 0 !important; } .content { padding: 0; max-width: none; }
   body { background: #fff; } .card { box-shadow: none; border: none; padding: 0; }
 }
+
+/* اختيار البند في نموذج الأسرة */
+.choice.big3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .7rem; }
+.choice.big3 .choicebox { padding: .9rem 1rem; }
+.choice.big3 .choicebox span { display: flex; flex-direction: column; }
+.choice.big3 .choicebox b { font-size: 1.08rem; }
+.choice.big3 .choicebox small { font-weight: 400; color: var(--muted, #667); }
+@media (max-width: 640px) { .choice.big3 { grid-template-columns: 1fr; } }

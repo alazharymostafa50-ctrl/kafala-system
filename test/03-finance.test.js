@@ -277,3 +277,35 @@ test('الكفالة والإعانة منفصلتان، وكشف التوقيع
   const v = await db.many('SELECT version FROM monthly_statements WHERE period=$1 ORDER BY version', [P]);
   assert.equal(v.length, 2);
 });
+
+test('الحساب التلقائي: كشف الشهر يتعمل لوحده، والأسرة الجديدة تتضاف، وتعديل المبلغ يتحسب، والمحذوفة تتلغي', async () => {
+  const { login, db } = require('./helpers');
+  const F = require('./fixtures');
+  const Ux = require('../src/lib/util');
+  const ent = require('../src/lib/entitlements');
+  process.env.AUTO_SYNC_TEST = '1';
+  try {
+    const cur = Ux.todayISO().slice(0, 7);
+    const mgr = await login('manager');
+    const fam = await F.family(mgr, { family_name: 'أسرة تلقائية', g_full_name: 'ولي تلقائي', support_type: 'aid', aid_amount: '300', status: 'active' });
+    await db.query(`UPDATE families SET status='active' WHERE id=$1`, [fam]);
+    await ent.autoSync(cur);
+    let e = await db.one('SELECT * FROM monthly_entitlements WHERE family_id=$1 AND period=$2', [fam, cur]);
+    assert.ok(e, 'اتضافت تلقائيًا'); assert.equal(e.amount_due, '300.00'); assert.equal(e.kafala_amount, '0.00');
+    await db.query(`UPDATE families SET aid_amount=450 WHERE id=$1`, [fam]);
+    await ent.autoSync(cur);
+    e = await db.one('SELECT * FROM monthly_entitlements WHERE id=$1', [e.id]);
+    assert.equal(e.amount_due, '450.00', 'اتحسب المبلغ الجديد');
+    await db.query(`UPDATE families SET deleted_at=now(), status='archived' WHERE id=$1`, [fam]);
+    await ent.autoSync(cur);
+    assert.equal((await db.one('SELECT status FROM monthly_entitlements WHERE id=$1', [e.id])).status, 'cancelled');
+    await db.query(`UPDATE families SET deleted_at=NULL, status='active' WHERE id=$1`, [fam]);
+    await ent.autoSync(cur);
+    assert.equal((await db.one('SELECT status FROM monthly_entitlements WHERE id=$1', [e.id])).status, 'not_paid');
+    // كشف الإعانة لوحده فيه الأسرة، وكشف الكفالة لا
+    const aidK = await mgr.get(`/entitlements/${cur}/receipts-compact?type=aid`);
+    assert.match(aidK.text, /كشف استلام الإعانة/); assert.match(aidK.text, /ولي تلقائي/);
+    const kafK = await mgr.get(`/entitlements/${cur}/receipts-compact?type=kafala`);
+    assert.doesNotMatch(kafK.text, /ولي تلقائي/);
+  } finally { delete process.env.AUTO_SYNC_TEST; }
+});

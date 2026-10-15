@@ -15,6 +15,7 @@ const { h, can, flash } = require('../middleware');
 const upload = h(async (req, res, next) => memoryUpload(Number((await settings.get('documents')).max_size_mb || 8)).single('file')(req, res, next));
 
 router.get('/entitlements', can('entitlements.view'), h(async (req, res) => {
+  await autoSync(U.todayISO().slice(0, 7));
   const runs = await db.many(
     `SELECT r.*, u.full_name AS by_name, count(e.id)::int AS families, COALESCE(SUM(e.amount_due) FILTER (WHERE e.status<>'cancelled'),0)::text AS due,
        COALESCE(SUM(e.amount_paid),0)::text AS paid FROM monthly_runs r LEFT JOIN monthly_entitlements e ON e.run_id=r.id LEFT JOIN users u ON u.id=r.created_by
@@ -35,6 +36,7 @@ router.post('/entitlements/generate', can('entitlements.generate'), h(async (req
 router.get('/entitlements/:period(\\d{4}-\\d{2})', can('entitlements.view'), h(async (req, res) => {
   const period = req.params.period;
   if (!U.validPeriod(period)) throw new U.UserError('الشهر غير صالح', 404);
+  await autoSync(period);
   const run = await db.one('SELECT * FROM monthly_runs WHERE period=$1', [period]);
   const params = [period]; const where = ['e.period=$1'];
   if (req.query.only === 'unpaid') where.push("e.amount_paid = 0 AND e.status <> 'cancelled'");
@@ -163,11 +165,15 @@ async function sendPrintable(req, res, view, data, { landscape = false, filename
   res.set('Content-Type', 'application/pdf').set('Content-Disposition', `attachment; filename="${filename}.pdf"`).send(Buffer.from(pdf));
 }
 
+// حساب تلقائي لكشف الشهر الحالي قبل عرضه (لا يوقف الصفحة لو حصل خطأ)
+const autoSync = async (period) => { try { await ent.autoSync(period); } catch (e) { console.error('الحساب التلقائي:', e.message); } };
+
 const canPrint = (req) => { if (!req.perms.has('reports.export')) throw new U.UserError('الطباعة تتطلب صلاحية الطباعة والتصدير', 403); };
 
 router.get('/entitlements/:period(\\d{4}-\\d{2})/sheet', can('entitlements.view'), h(async (req, res) => {
   canPrint(req);
   const period = req.params.period;
+  await autoSync(period);
   const rows = await receiptRows({ period, onlyUnpaid: req.query.only === 'unpaid' });
   await sendPrintable(req, res, 'entitlements/sheet', { period, rows, title: `كشف التوقيع بالاستلام — ${U.periodLabel(period)}`, onlyUnpaid: req.query.only === 'unpaid' },
     { landscape: true, filename: `sheet-${period}` });
@@ -176,6 +182,7 @@ router.get('/entitlements/:period(\\d{4}-\\d{2})/sheet', can('entitlements.view'
 router.get('/entitlements/:period(\\d{4}-\\d{2})/receipts', can('entitlements.view'), h(async (req, res) => {
   canPrint(req);
   const period = req.params.period;
+  await autoSync(period);
   const rows = await receiptRows({ period, onlyUnpaid: req.query.only === 'unpaid' });
   await sendPrintable(req, res, 'entitlements/receipts', { period, rows, title: `إيصالات استلام — ${U.periodLabel(period)}` }, { filename: `receipts-${period}` });
 }));
@@ -185,17 +192,35 @@ router.get('/entitlements/:period(\\d{4}-\\d{2})/receipts', can('entitlements.vi
 const statementRow = (r) => ({ file_no: r.file_no, guardian: r.guardian_name || r.family_name, phone: r.guardian_phone || '',
   kafala: r.kafala_amount, aid: r.aid_amount, due: r.amount_due });
 
-async function saveStatement(period, rows, userId) {
-  const data = { rows: rows.map(statementRow) };
-  const hash = crypto.createHash('sha256').update(JSON.stringify(data.rows)).digest('hex');
-  const last = await db.one('SELECT * FROM monthly_statements WHERE period=$1 ORDER BY version DESC LIMIT 1', [period]);
+const KINDS = {
+  all: { title: 'كشف استلام الكفالة والإعانة', short: 'الكفالة والإعانة' },
+  kafala: { title: 'كشف استلام الكفالة', short: 'الكفالة' },
+  aid: { title: 'كشف استلام الإعانة', short: 'الإعانة' },
+};
+const kindOf = (q) => (KINDS[q] ? q : 'all');
+
+/** صفوف الكشف حسب البند: كل كشف يحسب مبالغه وإجماليه لوحده */
+function rowsForKind(rows, kind) {
+  const out = [];
+  for (const r of rows.map(statementRow)) {
+    if (kind === 'kafala') { if (U.toCents(r.kafala) > 0) out.push({ ...r, aid: '0.00', due: r.kafala }); }
+    else if (kind === 'aid') { if (U.toCents(r.aid) > 0) out.push({ ...r, kafala: '0.00', due: r.aid }); }
+    else out.push(r);
+  }
+  return out;
+}
+
+async function saveStatement(period, kind, srows, userId) {
+  const data = { rows: srows };
+  const hash = crypto.createHash('sha256').update(JSON.stringify(srows)).digest('hex');
+  const last = await db.one('SELECT * FROM monthly_statements WHERE period=$1 AND kind=$2 ORDER BY version DESC LIMIT 1', [period, kind]);
   if (last && last.data_hash === hash) return last;
-  const total = U.fromCents(rows.reduce((a, r) => a + U.toCents(r.amount_due), 0));
+  const total = U.fromCents(srows.reduce((a, r) => a + U.toCents(r.due), 0));
   try {
-    return await db.one(`INSERT INTO monthly_statements (period, version, data, data_hash, family_count, total_due, created_by)
-      VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`, [period, (last ? last.version : 0) + 1, data, hash, rows.length, total, userId]);
+    return await db.one(`INSERT INTO monthly_statements (period, kind, version, data, data_hash, family_count, total_due, created_by)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`, [period, kind, (last ? last.version : 0) + 1, data, hash, srows.length, total, userId]);
   } catch (e) {
-    if (e.code === '23505') return db.one('SELECT * FROM monthly_statements WHERE period=$1 ORDER BY version DESC LIMIT 1', [period]);
+    if (e.code === '23505') return db.one('SELECT * FROM monthly_statements WHERE period=$1 AND kind=$2 ORDER BY version DESC LIMIT 1', [period, kind]);
     throw e;
   }
 }
@@ -204,30 +229,32 @@ const perPage = (q) => { const n = parseInt(q, 10); return n >= 10 && n <= 25 ? 
 
 async function renderStatement(req, res, st) {
   const per = perPage(req.query.per);
-  const latest = await db.one('SELECT max(version) AS v FROM monthly_statements WHERE period=$1', [st.period]);
+  const latest = await db.one('SELECT max(version) AS v FROM monthly_statements WHERE period=$1 AND kind=$2', [st.period, st.kind]);
   await sendPrintable(req, res, 'entitlements/receipts-compact', {
-    period: st.period, rows: st.data.rows, st, per, isLatest: st.version === latest.v,
+    period: st.period, rows: st.data.rows, st, per, kind: st.kind, kinds: KINDS, isLatest: st.version === latest.v,
     pdfQuery: `format=pdf&per=${per}`,
-    title: `كشف استلام الكفالة والإعانة — ${U.periodLabel(st.period)}`,
-  }, { filename: `kashf-${st.period}-v${st.version}` });
+    title: `${KINDS[st.kind].title} — ${U.periodLabel(st.period)}`,
+  }, { filename: `kashf-${st.kind}-${st.period}-v${st.version}` });
 }
 
 router.get('/entitlements/:period(\\d{4}-\\d{2})/receipts-compact', can('entitlements.view'), h(async (req, res) => {
   canPrint(req);
   const period = req.params.period;
-  const rows = await receiptRows({ period });
-  if (!rows.length) throw new U.UserError('لا توجد أسر في كشف هذا الشهر. أنشئ كشف الاستحقاقات أولًا.', 404);
-  const st = await saveStatement(period, rows, req.user.id);
+  await autoSync(period);
+  const kind = kindOf(req.query.type);
+  const srows = rowsForKind(await receiptRows({ period }), kind);
+  if (!srows.length) throw new U.UserError(`لا توجد أسر في ${KINDS[kind].title} لشهر ${U.periodLabel(period)}.`, 404);
+  const st = await saveStatement(period, kind, srows, req.user.id);
   await renderStatement(req, res, st);
 }));
 
 // أرشيف الكشوف المحفوظة لكل الشهور
 router.get('/statements', can('entitlements.view'), h(async (req, res) => {
   canPrint(req);
-  const list = await db.many(`SELECT s.id, s.period, s.version, s.family_count, s.total_due, s.created_at, u.full_name AS by_name,
-      s.version = max(s.version) OVER (PARTITION BY s.period) AS is_latest
-    FROM monthly_statements s LEFT JOIN users u ON u.id=s.created_by ORDER BY s.period DESC, s.version DESC`);
-  res.render('entitlements/statements', { title: 'أرشيف كشوف الاستلام الشهرية', list });
+  const list = await db.many(`SELECT s.id, s.period, s.kind, s.version, s.family_count, s.total_due, s.created_at, u.full_name AS by_name,
+      s.version = max(s.version) OVER (PARTITION BY s.period, s.kind) AS is_latest
+    FROM monthly_statements s LEFT JOIN users u ON u.id=s.created_by ORDER BY s.period DESC, s.kind, s.version DESC`);
+  res.render('entitlements/statements', { title: 'أرشيف كشوف الاستلام الشهرية', list, kinds: KINDS });
 }));
 
 router.get('/statements/:id(\\d+)', can('entitlements.view'), h(async (req, res) => {

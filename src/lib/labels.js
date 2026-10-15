@@ -6,6 +6,7 @@ const L = {
     active: ['نشط', 'success'], under_review: ['قيد المراجعة', 'warning'], suspended: ['موقوف مؤقتًا', 'danger'],
     closed: ['مغلق', 'muted'], archived: ['مؤرشف', 'muted'],
   },
+  supportType: { kafala: ['كفالة', 'success'], aid: ['إعانة', 'info'], both: ['كفالة وإعانة', 'gold'] },
   calcMethod: {
     family_fixed: ['مبلغ ثابت للأسرة كلها', 'info'], per_member: ['مبلغ لكل يتيم', 'info'], mixed: ['مبلغ للأسرة + مبلغ لكل يتيم', 'info'],
   },

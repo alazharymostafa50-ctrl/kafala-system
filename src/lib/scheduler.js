@@ -15,6 +15,7 @@ async function runIfStale({ force = false } = {}) {
      RETURNING key`, [force, EVERY_HOURS]);
   if (!claim) return null;
   const stats = await elig.runEngine();
+  try { stats.auto = await require('./entitlements').autoSync(); } catch (e) { console.error('الحساب التلقائي:', e.message); }
   await db.query(`UPDATE app_state SET value=$1 WHERE key='engine_last_run'`, [JSON.stringify(stats)]);
   await db.query('DELETE FROM user_sessions WHERE expire < now()');
   return stats;

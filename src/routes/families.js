@@ -14,7 +14,12 @@ const PAYOUT = ['cash', 'bank_transfer', 'wallet', 'cheque', 'other'];
 function mask(v) { if (!v) return v; const s = String(v); return s.length <= 4 ? '••••' : '•'.repeat(Math.min(8, s.length - 4)) + s.slice(-4); }
 
 function parseFamily(b) {
-  return {
+  // إن لم يُحدد البند (مثل الاستيراد القديم) يُستنتج من المبالغ
+  const safeC = (v) => { try { return U.toCents(v || '0'); } catch { return 0; } };
+  const guess = safeC(b.aid_amount) > 0 ? (safeC(b.monthly_amount) > 0 || (b.calc_method && b.calc_method !== 'family_fixed') ? 'both' : 'aid') : 'kafala';
+  const support = U.oneOf(b.support_type || guess, ['kafala', 'aid', 'both'], { def: guess, label: 'بند الصرف' });
+  const f = {
+    support_type: support,
     family_name: U.str(b.family_name, { required: true, max: 150, label: 'اسم الأسرة' }),
     opened_on: U.date(b.opened_on, { label: 'تاريخ فتح الملف' }) || U.todayISO(),
     address: U.str(b.address, { max: 300 }),
@@ -27,6 +32,11 @@ function parseFamily(b) {
     last_review_on: U.date(b.last_review_on, { label: 'تاريخ آخر مراجعة' }),
     responsible_user_id: b.responsible_user_id ? U.intId(b.responsible_user_id) : null,
   };
+  // البند يحدد أي المبالغ تُحتسب
+  if (support === 'aid') { f.calc_method = 'family_fixed'; f.monthly_amount = '0.00'; }
+  if (support === 'kafala') { f.aid_amount = '0.00'; f.aid_note = null; }
+  if (support !== 'kafala' && U.toCents(f.aid_amount) <= 0) throw new U.UserError('اكتب مبلغ الإعانة الشهرية (البند فيه إعانة)');
+  return f;
 }
 function parseGuardian(b, canSensitive) {
   const g = {
@@ -59,6 +69,8 @@ router.get('/families', can('families.view'), h(async (req, res) => {
   if (FAMILY_STATUSES.includes(req.query.status)) w.add('f.status = ?', req.query.status);
   else if (req.query.status !== 'all') w.add("f.status <> 'archived'");
   if (req.query.city) w.add('f.city = ?', req.query.city);
+  if (['kafala', 'aid', 'both'].includes(req.query.support)) w.add('f.support_type = ?', req.query.support);
+  w.add('f.deleted_at IS NULL');
   if (req.query.nosponsor === '1') w.add(`NOT EXISTS (SELECT 1 FROM family_sponsorships s WHERE s.family_id=f.id AND s.status='active')`);
   const base = `SELECT f.*, g.full_name AS guardian_name, g.phone,
       (SELECT count(*) FROM family_members m WHERE m.family_id=f.id)::int AS members_count,
@@ -86,10 +98,10 @@ router.post('/families', can('families.edit'), h(async (req, res) => {
     const dup = await c.one('SELECT f.file_no FROM guardians g JOIN families f ON f.id=g.family_id WHERE g.phone=$1 OR g.phone_alt=$1 LIMIT 1', [g.phone]);
     if (dup && req.body.confirm_duplicate !== '1') throw new U.UserError(`يوجد ملف أسرة مسجل بنفس رقم الجوال (${dup.file_no}). إذا كانت أسرة مختلفة فعلًا، فعّل خيار «تأكيد أنها أسرة مختلفة» وأعد الحفظ.`);
     const row = await c.one(
-      `INSERT INTO families (family_name, opened_on, status, address, city, district, calc_method, monthly_amount, aid_amount, aid_note, last_review_on, responsible_user_id, confidential_notes, created_by)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING *`,
+      `INSERT INTO families (family_name, opened_on, status, address, city, district, calc_method, monthly_amount, aid_amount, aid_note, last_review_on, responsible_user_id, confidential_notes, created_by, support_type)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) RETURNING *`,
       [f.family_name, f.opened_on, status, f.address, f.city, f.district, f.calc_method, f.monthly_amount, f.aid_amount, f.aid_note, f.last_review_on, f.responsible_user_id,
-        sens ? U.str(req.body.confidential_notes, { max: 3000 }) : null, req.user.id]);
+        sens ? U.str(req.body.confidential_notes, { max: 3000 }) : null, req.user.id, f.support_type]);
     await c.query(
       `INSERT INTO guardians (family_id, full_name, relation, national_id, phone, phone_alt, payout_method, bank_name, iban, notes)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,

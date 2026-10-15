@@ -6,6 +6,7 @@
  * - مفتاح منع التكرار لكل نموذج صرف يمنع التسجيل المزدوج.
  */
 const U = require('./util');
+const db = require('../db');
 const finance = require('./finance');
 const settings = require('./settings');
 const audit = require('./audit');
@@ -18,11 +19,13 @@ async function computeFamily(c, fam, payingStatuses) {
   const eligible = members.filter((m) => payingStatuses.includes(m.eligibility_status));
   let due = 0;
   const lines = [];
-  if (fam.calc_method === 'family_fixed' || fam.calc_method === 'mixed') {
+  const support = fam.support_type || 'kafala';
+  const withKafala = support !== 'aid';
+  if (withKafala && (fam.calc_method === 'family_fixed' || fam.calc_method === 'mixed')) {
     due += U.toCents(fam.monthly_amount);
     lines.push({ item: fam.calc_method === 'mixed' ? 'المبلغ الأساسي للأسرة' : 'مبلغ ثابت للأسرة', amount: U.fromCents(U.toCents(fam.monthly_amount)) });
   }
-  if (fam.calc_method === 'per_member' || fam.calc_method === 'mixed') {
+  if (withKafala && (fam.calc_method === 'per_member' || fam.calc_method === 'mixed')) {
     for (const m of eligible) {
       due += U.toCents(m.monthly_amount);
       lines.push({ item: `${m.full_name} (${m.member_no})`, member_id: m.id, amount: U.fromCents(U.toCents(m.monthly_amount)) });
@@ -30,12 +33,12 @@ async function computeFamily(c, fam, payingStatuses) {
   }
   // الإعانة الشهرية للأسرة تُضاف منفصلة عن الكفالة
   const kafala = due;
-  const aid = U.toCents(fam.aid_amount || '0');
+  const aid = support === 'kafala' ? 0 : U.toCents(fam.aid_amount || '0');
   if (aid > 0) lines.push({ item: 'الإعانة الشهرية للأسرة', amount: U.fromCents(aid), kind: 'aid' });
   due += aid;
   return {
     due, kafala, aid, eligibleCount: eligible.length,
-    detail: { method: fam.calc_method, lines, excluded: members.filter((m) => !payingStatuses.includes(m.eligibility_status)).map((m) => ({ id: m.id, name: m.full_name, status: m.eligibility_status })) },
+    detail: { method: fam.calc_method, support, lines, excluded: members.filter((m) => !payingStatuses.includes(m.eligibility_status)).map((m) => ({ id: m.id, name: m.full_name, status: m.eligibility_status })) },
   };
 }
 
@@ -56,7 +59,7 @@ async function generate(c, period, user, { mode = 'new', req = null } = {}) {
   if (!run) run = await c.one('INSERT INTO monthly_runs (period, created_by) VALUES ($1,$2) RETURNING *', [period, user.id]);
 
   const fams = await c.many(
-    `SELECT f.id, f.file_no, f.family_name, f.calc_method, f.monthly_amount::text AS monthly_amount, f.aid_amount::text AS aid_amount FROM families f
+    `SELECT f.id, f.file_no, f.family_name, f.calc_method, f.monthly_amount::text AS monthly_amount, f.aid_amount::text AS aid_amount, f.support_type FROM families f
      WHERE f.status='active' AND f.opened_on <= $2
        AND NOT EXISTS (SELECT 1 FROM monthly_entitlements e WHERE e.family_id=f.id AND e.period=$1)
      ORDER BY f.id`, [period, U.periodEnd(period)]);
@@ -66,8 +69,8 @@ async function generate(c, period, user, { mode = 'new', req = null } = {}) {
     const r = await computeFamily(c, f, paying);
     if (r.due <= 0) { result.skippedZero.push(f.file_no); continue; }
     let needsReview = false; let reason = null;
-    if (f.calc_method === 'mixed' && r.eligibleCount === 0) { needsReview = true; reason = 'لا يوجد مستفيد مستحق حاليًا ويُصرف المبلغ الأساسي فقط — يحتاج مراجعة'; }
-    if (f.calc_method === 'family_fixed') {
+    if (f.support_type !== 'aid' && f.calc_method === 'mixed' && r.eligibleCount === 0) { needsReview = true; reason = 'لا يوجد مستفيد مستحق حاليًا ويُصرف المبلغ الأساسي فقط — يحتاج مراجعة'; }
+    if (f.support_type !== 'aid' && f.calc_method === 'family_fixed') {
       const p = await c.one('SELECT eligible_count FROM monthly_entitlements WHERE family_id=$1 AND period=$2', [f.id, prev]);
       if (r.eligibleCount === 0) { needsReview = true; reason = 'لا يوجد مستفيد مستحق حاليًا والكفالة مبلغ ثابت — يحتاج مراجعة'; }
       else if (p && p.eligible_count !== r.eligibleCount) { needsReview = true; reason = `تغير عدد المستحقين من ${p.eligible_count} إلى ${r.eligibleCount} والمبلغ ثابت — يحتاج مراجعة`; }
@@ -83,7 +86,7 @@ async function generate(c, period, user, { mode = 'new', req = null } = {}) {
     }
     result.created++; result.total += r.due;
   }
-  await audit.log(req || { user }, mode === 'new' ? 'entitlements_generated' : 'entitlements_added_missing', 'monthly_run', period,
+  if (mode === 'new' || result.created > 0) await audit.log(req || { user }, mode === 'new' ? 'entitlements_generated' : 'entitlements_added_missing', 'monthly_run', period,
     { after: { created: result.created, total: U.fromCents(result.total), skipped_zero: result.skippedZero } }, c);
   return result;
 }
@@ -204,4 +207,63 @@ async function amendAmount(c, entId, { kafala, aid }, reason, user, req) {
   await audit.log(req, 'entitlement_amended', 'monthly_entitlement', entId, { before: { kafala: e.kafala_amount, aid: e.aid_amount }, after: { kafala: k, aid: a }, reason }, c);
 }
 
-module.exports = { generate, disburse, approveDisbursement, reverseDisbursement, setStatus, amendAmount, refreshStatus, computeFamily };
+const SYSTEM_USER = { id: null, username: 'system' };
+const AUTO_CANCEL = 'أُلغي تلقائيًا: الأسرة محذوفة أو غير نشطة';
+
+/**
+ * الحساب التلقائي لكشف الشهر الحالي (عند فتح الصفحات وفي المهمة الدورية):
+ * - ينشئ كشف الشهر لو مش موجود، ويضيف الأسر النشطة الجديدة.
+ * - يعيد حساب مبالغ الأسر اللي لسه ماستلمتش (لو اتغيرت بيانات الأسرة) — إلا لو المبلغ اتعدل يدويًا.
+ * - يلغي سجلات الأسر المحذوفة/غير النشطة اللي لسه ماستلمتش، ويرجّعها لو الأسرة رجعت.
+ */
+async function autoSync(period = U.todayISO().slice(0, 7)) {
+  const fin = await settings.get('finance');
+  if (fin.auto_generate === false) return null;
+  if (process.env.NODE_ENV === 'test' && process.env.AUTO_SYNC_TEST !== '1') return null; // الاختبارات القديمة تتحكم في الكشف يدويًا
+  if (period !== U.todayISO().slice(0, 7)) return null;
+  return db.tx(async (c) => {
+    const run = await c.one('SELECT * FROM monthly_runs WHERE period=$1', [period]);
+    if (run && run.status === 'closed') return null;
+    const cfg = await settings.get('eligibility');
+    const paying = cfg.paying_statuses || ['eligible', 'eligible_university'];
+    let updated = 0; let cancelled = 0; let restored = 0;
+    if (run) {
+      await c.query('SELECT pg_advisory_xact_lock(hashtext($1))', ['run:' + period]);
+      const ents = await c.many(
+        `SELECT e.*, f.status AS fam_status, f.deleted_at, f.calc_method AS f_calc, f.monthly_amount::text AS monthly_amount, f.aid_amount::text AS f_aid, f.support_type, f.id AS fid
+         FROM monthly_entitlements e JOIN families f ON f.id=e.family_id
+         WHERE e.period=$1 AND e.amount_paid = 0
+           AND NOT EXISTS (SELECT 1 FROM disbursements d WHERE d.entitlement_id=e.id AND d.status='pending_approval')`, [period]);
+      for (const e of ents) {
+        const active = e.fam_status === 'active' && !e.deleted_at;
+        if (!active) {
+          if (e.status !== 'cancelled') {
+            await c.query(`UPDATE monthly_entitlements SET status='cancelled', status_reason=$2, updated_at=now() WHERE id=$1`, [e.id, AUTO_CANCEL]);
+            cancelled++;
+          }
+          continue;
+        }
+        if (e.status === 'cancelled' && e.status_reason !== AUTO_CANCEL) continue; // إلغاء يدوي يبقى كما هو
+        if ((e.calc_detail.amendments || []).length) continue; // تعديل يدوي يبقى كما هو
+        const r = await computeFamily(c, { id: e.fid, calc_method: e.f_calc, monthly_amount: e.monthly_amount, aid_amount: e.f_aid, support_type: e.support_type }, paying);
+        const changed = U.toCents(e.amount_due) !== r.due || U.toCents(e.kafala_amount) !== r.kafala || U.toCents(e.aid_amount) !== r.aid || e.eligible_count !== r.eligibleCount;
+        if (e.status === 'cancelled') {
+          await c.query(`UPDATE monthly_entitlements SET status='not_paid', status_reason=NULL, amount_due=$2, kafala_amount=$3, aid_amount=$4, eligible_count=$5, calc_detail=$6, calc_method=$7, updated_at=now() WHERE id=$1`,
+            [e.id, U.fromCents(r.due), U.fromCents(r.kafala), U.fromCents(r.aid), r.eligibleCount, JSON.stringify(r.detail), e.f_calc]);
+          restored++;
+        } else if (changed) {
+          await c.query(`UPDATE monthly_entitlements SET amount_due=$2, kafala_amount=$3, aid_amount=$4, eligible_count=$5, calc_detail=$6, calc_method=$7, updated_at=now() WHERE id=$1`,
+            [e.id, U.fromCents(r.due), U.fromCents(r.kafala), U.fromCents(r.aid), r.eligibleCount, JSON.stringify(r.detail), e.f_calc]);
+          updated++;
+        }
+      }
+    }
+    const g = await generate(c, period, SYSTEM_USER, { mode: run ? 'add_missing' : 'new' });
+    if (updated || cancelled || restored) {
+      await audit.log({ user: SYSTEM_USER }, 'entitlements_auto_recalc', 'monthly_run', period, { after: { updated, cancelled, restored } }, c);
+    }
+    return { created: g.created, updated, cancelled, restored };
+  });
+}
+
+module.exports = { generate, autoSync, disburse, approveDisbursement, reverseDisbursement, setStatus, amendAmount, refreshStatus, computeFamily };
