@@ -10,6 +10,7 @@
 <div class="authpage">
   <div class="authcard">
     <img src="<%= org.logo %>" alt="شعار الجمعية">
+    <div class="muted small"><b><%= org.name %></b><% if (org.registration) { %> <span class="regtxt"><%= org.registration %></span><% } %></div>
     <h1>تفعيل <%= org.system_name %></h1>
     <div class="muted small">إنشاء حساب مدير النظام — يتم مرة واحدة فقط</div>
     <% if (flash) { %><div class="alert <%= flash.type %>" style="margin-top:1rem"><%= flash.msg %></div><% } %>

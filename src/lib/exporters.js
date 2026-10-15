@@ -74,7 +74,7 @@ async function toXlsx(report) {
   const ws = wb.addWorksheet(report.title.slice(0, 31), { views: [{ rightToLeft: true }], pageSetup: { paperSize: 9, orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0 } });
   const green = 'FF054834'; const gold = 'FFF6EFDC';
   const font = { name: 'Arial' };
-  ws.addRow([report.org.name]).font = { ...font, bold: true, size: 14, color: { argb: green } };
+  ws.addRow([report.org.name + (report.org.registration ? ' — ' + report.org.registration : '')]).font = { ...font, bold: true, size: 14, color: { argb: green } };
   if (report.org.subtitle) ws.addRow([report.org.subtitle]).font = { ...font, size: 10 };
   ws.addRow([`${report.title} — ${report.periodLabel}`]).font = { ...font, bold: true, size: 13 };
   ws.addRow([`تاريخ الاستخراج: ${new Date(report.generatedAt).toISOString().slice(0, 16).replace('T', ' ')} — العملة: ${report.org.currency || ''} — المستوى: ${report.level === 'summary' ? 'مختصر' : 'تفصيلي'}`]).font = { ...font, size: 9, color: { argb: 'FF666666' } };

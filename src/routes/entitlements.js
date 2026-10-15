@@ -136,7 +136,7 @@ async function receiptRows({ period, ids = null, onlyUnpaid = false }) {
   if (ids) { params.push(ids); where.push(`e.id = ANY($${params.length})`); }
   if (onlyUnpaid) where.push('e.amount_paid < e.amount_due');
   const rows = await db.many(
-    `SELECT e.*, f.file_no, f.family_name, f.aid_note, g.full_name AS guardian_name, g.relation AS guardian_relation,
+    `SELECT e.*, f.file_no, f.family_name, f.aid_note, g.full_name AS guardian_name, g.relation AS guardian_relation, g.phone AS guardian_phone,
        (SELECT max(d.disb_date) FROM disbursements d WHERE d.entitlement_id=e.id AND d.status='paid') AS last_date
      FROM monthly_entitlements e JOIN families f ON f.id=e.family_id LEFT JOIN guardians g ON g.family_id=f.id
      WHERE ${where.join(' AND ')} ORDER BY f.file_no`, params);
@@ -178,6 +178,63 @@ router.get('/entitlements/:period(\\d{4}-\\d{2})/receipts', can('entitlements.vi
   const period = req.params.period;
   const rows = await receiptRows({ period, onlyUnpaid: req.query.only === 'unpaid' });
   await sendPrintable(req, res, 'entitlements/receipts', { period, rows, title: `إيصالات استلام — ${U.periodLabel(period)}` }, { filename: `receipts-${period}` });
+}));
+
+// كشف الاستلام المجمّع: جدول بكل الأسر (20 أسرة في الصفحة تقريبًا) بالتوقيع والتاريخ.
+// كل شهر يُحفظ تلقائيًا كنسخة ثابتة، وأي تغيير لاحق في المستحقات يحفظ نسخة جديدة (القديمة لا تُحذف).
+const statementRow = (r) => ({ file_no: r.file_no, guardian: r.guardian_name || r.family_name, phone: r.guardian_phone || '',
+  kafala: r.kafala_amount, aid: r.aid_amount, due: r.amount_due });
+
+async function saveStatement(period, rows, userId) {
+  const data = { rows: rows.map(statementRow) };
+  const hash = crypto.createHash('sha256').update(JSON.stringify(data.rows)).digest('hex');
+  const last = await db.one('SELECT * FROM monthly_statements WHERE period=$1 ORDER BY version DESC LIMIT 1', [period]);
+  if (last && last.data_hash === hash) return last;
+  const total = U.fromCents(rows.reduce((a, r) => a + U.toCents(r.amount_due), 0));
+  try {
+    return await db.one(`INSERT INTO monthly_statements (period, version, data, data_hash, family_count, total_due, created_by)
+      VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`, [period, (last ? last.version : 0) + 1, data, hash, rows.length, total, userId]);
+  } catch (e) {
+    if (e.code === '23505') return db.one('SELECT * FROM monthly_statements WHERE period=$1 ORDER BY version DESC LIMIT 1', [period]);
+    throw e;
+  }
+}
+
+const perPage = (q) => { const n = parseInt(q, 10); return n >= 10 && n <= 25 ? n : 20; };
+
+async function renderStatement(req, res, st) {
+  const per = perPage(req.query.per);
+  const latest = await db.one('SELECT max(version) AS v FROM monthly_statements WHERE period=$1', [st.period]);
+  await sendPrintable(req, res, 'entitlements/receipts-compact', {
+    period: st.period, rows: st.data.rows, st, per, isLatest: st.version === latest.v,
+    pdfQuery: `format=pdf&per=${per}`,
+    title: `كشف استلام الكفالة والإعانة — ${U.periodLabel(st.period)}`,
+  }, { filename: `kashf-${st.period}-v${st.version}` });
+}
+
+router.get('/entitlements/:period(\\d{4}-\\d{2})/receipts-compact', can('entitlements.view'), h(async (req, res) => {
+  canPrint(req);
+  const period = req.params.period;
+  const rows = await receiptRows({ period });
+  if (!rows.length) throw new U.UserError('لا توجد أسر في كشف هذا الشهر. أنشئ كشف الاستحقاقات أولًا.', 404);
+  const st = await saveStatement(period, rows, req.user.id);
+  await renderStatement(req, res, st);
+}));
+
+// أرشيف الكشوف المحفوظة لكل الشهور
+router.get('/statements', can('entitlements.view'), h(async (req, res) => {
+  canPrint(req);
+  const list = await db.many(`SELECT s.id, s.period, s.version, s.family_count, s.total_due, s.created_at, u.full_name AS by_name,
+      s.version = max(s.version) OVER (PARTITION BY s.period) AS is_latest
+    FROM monthly_statements s LEFT JOIN users u ON u.id=s.created_by ORDER BY s.period DESC, s.version DESC`);
+  res.render('entitlements/statements', { title: 'أرشيف كشوف الاستلام الشهرية', list });
+}));
+
+router.get('/statements/:id(\\d+)', can('entitlements.view'), h(async (req, res) => {
+  canPrint(req);
+  const st = await db.one('SELECT * FROM monthly_statements WHERE id=$1', [U.intId(req.params.id)]);
+  if (!st) throw new U.UserError('الكشف غير موجود', 404);
+  await renderStatement(req, res, st);
 }));
 
 router.get('/entitlements/item/:id(\\d+)/receipt', can('entitlements.view'), h(async (req, res) => {

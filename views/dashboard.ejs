@@ -11,7 +11,7 @@
   <% if (can('families.view')) { %><a class="tile" href="/families"><%- icon('search') %>البحث عن أسرة<small>بالاسم أو رقم الملف أو الجوال</small></a><% } %>
   <% if (can('entitlements.view')) { %><a class="tile" href="/entitlements/<%= period %>"><%- icon('calendar') %>صرف الشهر<small>تسجيل من استلم ومن لم يستلم</small></a><% } %>
   <% if (can('entitlements.view') && can('reports.export')) { %><a class="tile gold" href="/entitlements/<%= period %>/sheet" target="_blank" rel="noopener"><%- icon('print') %>كشف التوقيع بالاستلام<small>طباعة كشف الشهر للتوقيع</small></a>
-  <a class="tile gold" href="/entitlements/<%= period %>/receipts" target="_blank" rel="noopener"><%- icon('doc') %>إيصالات الأسر<small>إيصال لكل أسرة بالتوقيع</small></a><% } %>
+  <a class="tile gold" href="/entitlements/<%= period %>/receipts-compact" target="_blank" rel="noopener"><%- icon('doc') %>كشف الاستلام المجمّع<small>كل الأسر في جدول بالتوقيع</small></a><% } %>
   <% if (can('donations.edit')) { %><a class="tile" href="/donations/new"><%- icon('donation') %>تسجيل تبرع<small>تبرع أو مساهمة كفيل</small></a><% } %>
   <% if (can('expenses.edit')) { %><a class="tile" href="/expenses/new"><%- icon('expense') %>تسجيل مصروف</a><% } %>
   <% if (can('sponsors.edit')) { %><a class="tile" href="/sponsors/new"><%- icon('sponsor') %>إضافة كفيل</a><% } %>

@@ -140,6 +140,7 @@ router.post('/admin/settings/org', can('settings.manage'), logoUpload, h(async (
     ...cur,
     name: U.str(req.body.name, { required: true, max: 150, label: 'اسم الجمعية' }),
     subtitle: U.str(req.body.subtitle, { max: 200 }) || '',
+    registration: U.str(req.body.registration, { max: 120 }) || '',
     system_name: U.str(req.body.system_name, { required: true, max: 100, label: 'اسم النظام' }),
     program_name: U.str(req.body.program_name, { max: 100 }) || '',
     phone: U.str(req.body.phone, { max: 60 }) || '',

@@ -19,6 +19,7 @@ body { font-family: 'CairoR', Tahoma, sans-serif; color: #1d2a25; margin: 0; bac
 .hdr img { width: 62px; height: 62px; }
 .hdr .org b { font-size: 14pt; color: #054834; display: block; }
 .hdr .org span { font-size: 8.5pt; color: #555; }
+.reg { font-size: 8.5pt; font-weight: 400; color: #7a5f1c; }
 .hdr .ttl { margin-inline-start: auto; text-align: left; }
 .hdr .ttl h1 { margin: 0; font-size: 14pt; color: #054834; }
 .hdr .ttl div { font-size: 9pt; color: #555; }
@@ -31,5 +32,5 @@ body { font-family: 'CairoR', Tahoma, sans-serif; color: #1d2a25; margin: 0; bac
 <body>
 <% if (!forPdf) { %>
 <div class="bar"><span><%= title %> — <%= rows.length %> أسرة</span>
-<span><button type="button" id="printBtn">طباعة</button> <a href="?format=pdf<%= typeof onlyUnpaid !== 'undefined' && onlyUnpaid ? '&only=unpaid' : '' %>">تنزيل PDF</a> <a href="/entitlements/<%= period %>">رجوع للصرف</a></span></div>
+<span><button type="button" id="printBtn">طباعة</button> <a href="?<%= typeof pdfQuery !== 'undefined' ? pdfQuery : 'format=pdf' + (typeof onlyUnpaid !== 'undefined' && onlyUnpaid ? '&only=unpaid' : '') %>">تنزيل PDF</a> <a href="/entitlements/<%= period %>">رجوع للصرف</a></span></div>
 <% } %>

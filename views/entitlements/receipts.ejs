@@ -29,7 +29,7 @@ table.amt td.tot { font-weight: 700; background: #f6efdc; }
   <div class="receipt<%= i % 2 === 1 ? ' pb' : '' %>">
     <div class="rh">
       <% if (logo) { %><img src="<%= logo %>" alt=""><% } %>
-      <div class="o"><b><%= org.name %></b><span><%= org.subtitle || '' %></span></div>
+      <div class="o"><b><%= org.name %> <small class="reg"><%= org.registration || '' %></small></b><span><%= org.subtitle || '' %></span></div>
       <div class="t"><h2>إيصال استلام كفالة وإعانة</h2><div>شهر <b><%= U.periodLabel(r.period) %></b> · رقم الإيصال <span class="num"><%= r.file_no %>/<%= r.period %></span></div></div>
     </div>
     <% if (rem <= 0) { %><div class="paid">تم الاستلام <%= r.last_date || '' %></div><% } %>

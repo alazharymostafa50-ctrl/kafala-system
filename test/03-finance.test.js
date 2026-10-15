@@ -251,8 +251,20 @@ test('الكفالة والإعانة منفصلتان، وكشف التوقيع
   assert.match(sheet.text, /كشف التوقيع بالاستلام/); assert.match(sheet.text, /التوقيع بالاستلام/); assert.match(sheet.text, /850\.00/);
   const rc = await mgr.get(`/entitlements/item/${e.id}/receipt`);
   assert.match(rc.text, /إيصال استلام كفالة وإعانة/); assert.match(rc.text, /ثمانمائة وخمسون/); assert.match(rc.text, /يتيم الإيصال/); assert.match(rc.text, /إيجار/);
+  const cc = await mgr.get(`/entitlements/${P}/receipts-compact`);
+  assert.equal(cc.status, 200);
+  assert.match(cc.text, /كشف استلام الكفالة والإعانة/); assert.match(cc.text, /المشهرة برقم 1248 لسنة 2008 م/);
+  assert.match(cc.text, /التوقيع/); assert.match(cc.text, /رقم التليفون/); assert.match(cc.text, /850\.00/);
+  // يُحفظ الكشف تلقائيًا مرة واحدة، ولا تتكرر النسخة إن لم تتغير البيانات
+  await mgr.get(`/entitlements/${P}/receipts-compact?per=15`);
+  const saved = await db.many('SELECT * FROM monthly_statements WHERE period=$1', [P]);
+  assert.equal(saved.length, 1); assert.equal(saved[0].version, 1);
+  await assert.rejects(db.query('DELETE FROM monthly_statements WHERE id=$1', [saved[0].id]), /غير قابل/);
+  const arch = await mgr.get('/statements'); assert.equal(arch.status, 200); assert.match(arch.text, /أرشيف كشوف الاستلام/);
+  assert.equal((await mgr.get(`/statements/${saved[0].id}`)).status, 200);
   const social = await login('social');
   assert.equal((await social.get(`/entitlements/${P}/sheet`)).status, 403);
+  assert.equal((await social.get(`/entitlements/${P}/receipts-compact`)).status, 403);
   await cashier.post(`/entitlements/item/${e.id}/quick`, { idempotency_key: 'quick-1' });
   await cashier.post(`/entitlements/item/${e.id}/quick`, { idempotency_key: 'quick-1' });
   const after = await db.one('SELECT amount_paid, status FROM monthly_entitlements WHERE id=$1', [e.id]);
@@ -261,4 +273,7 @@ test('الكفالة والإعانة منفصلتان، وكشف التوقيع
   await mgr.post(`/entitlements/item/${e.id}/amend`, { kafala_amount: '600', aid_amount: '400', reason: 'زيادة الإعانة' });
   const am = await db.one('SELECT amount_due, aid_amount, status FROM monthly_entitlements WHERE id=$1', [e.id]);
   assert.equal(am.amount_due, '1000.00'); assert.equal(am.aid_amount, '400.00'); assert.equal(am.status, 'partial');
+  await mgr.get(`/entitlements/${P}/receipts-compact`);
+  const v = await db.many('SELECT version FROM monthly_statements WHERE period=$1 ORDER BY version', [P]);
+  assert.equal(v.length, 2);
 });

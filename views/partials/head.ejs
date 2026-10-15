@@ -14,7 +14,7 @@
 <aside class="sidebar" id="sidebar">
   <div class="brand">
     <img src="<%= org.logo %>" alt="شعار الجمعية">
-    <div><b><%= org.name %></b><span><%= org.system_name %></span></div>
+    <div><b><%= org.name %></b><% if (org.registration) { %><span class="reg"><%= org.registration %></span><% } %><span><%= org.system_name %></span></div>
   </div>
   <nav class="nav">
     <% const nav = (href, ic, text, perm, extra) => { if (perm && !can(perm)) return ''; const on = (href === '/' ? path === '/' : path.startsWith(href)); return `<a href="${href}" class="${on ? 'on' : ''}" title="${text}">${icon(ic)}<span>${text}</span>${extra || ''}</a>`; } %>
@@ -27,6 +27,7 @@
     <%- nav('/donations', 'donation', 'التبرعات', 'donations.view') %>
     <%- nav('/expenses', 'expense', 'المصروفات', 'expenses.view') %>
     <%- nav('/entitlements', 'calendar', 'الصرف الشهري', 'entitlements.view') %>
+    <% if (can('reports.export')) { %><%- nav('/statements', 'doc', 'أرشيف الكشوف', 'entitlements.view') %><% } %>
     <%- nav('/finance', 'wallet', 'الأرصدة', 'finance.view') %>
     <%- nav('/reports', 'report', 'التقارير والطباعة', 'reports.view') %>
     <div class="grp">النظام</div>

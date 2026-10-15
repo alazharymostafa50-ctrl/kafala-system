@@ -5,6 +5,7 @@
 <form method="post" action="/admin/settings/org?_csrf=<%= csrf %>" enctype="multipart/form-data">
 <div class="fields">
   <div class="field"><label>اسم الجمعية</label><input name="name" required value="<%= o.name %>"></div>
+  <div class="field"><label>رقم الإشهار (يظهر بجوار الاسم)</label><input name="registration" value="<%= o.registration %>" placeholder="المشهرة برقم ... لسنة ..."></div>
   <div class="field wide"><label>الوصف / الفرع</label><input name="subtitle" value="<%= o.subtitle %>"></div>
   <div class="field"><label>اسم النظام</label><input name="system_name" required value="<%= o.system_name %>"></div>
   <div class="field"><label>اسم البرنامج</label><input name="program_name" value="<%= o.program_name %>"></div>

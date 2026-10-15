@@ -52,7 +52,7 @@ table.kv tr.strong td { font-weight: 700; background: #e6f2ec !important; }
 <div class="sheet">
   <div class="hdr">
     <% if (assets.logo) { %><img src="<%= assets.logo %>" alt=""><% } %>
-    <div class="org"><b><%= r.org.name %></b><span><%= r.org.subtitle || '' %></span><br><span><%= r.org.system_name %><%= r.org.phone ? ' — ' + r.org.phone : '' %><%= r.org.address ? ' — ' + r.org.address : '' %></span></div>
+    <div class="org"><b><%= r.org.name %> <small style="font-size:8.5pt;font-weight:400;color:#7a5f1c"><%= r.org.registration || '' %></small></b><span><%= r.org.subtitle || '' %></span><br><span><%= r.org.system_name %><%= r.org.phone ? ' — ' + r.org.phone : '' %><%= r.org.address ? ' — ' + r.org.address : '' %></span></div>
     <div class="ttl"><h1><%= r.title %></h1><div>شهر: <b><%= r.periodLabel %></b> · <%= r.level === 'summary' ? 'تقرير مختصر للإدارة' : 'تقرير تفصيلي' %></div>
       <div>تاريخ الاستخراج: <span class="ltr"><%= new Date(r.generatedAt).toISOString().slice(0,16).replace('T',' ') %> UTC</span> · العملة: <%= r.org.currency %></div>
       <% if (approval) { %><div style="margin-top:4px"><span class="stamp"><%= approval.status === 'approved' ? 'نسخة معتمدة' : 'بانتظار الاعتماد' %> — إصدار <%= approval.version %></span></div><% } %>

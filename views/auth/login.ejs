@@ -11,7 +11,7 @@
   <div class="authcard">
     <img src="<%= org.logo %>" alt="شعار الجمعية">
     <h1><%= org.system_name %></h1>
-    <div class="muted small"><%= org.name %><% if (org.subtitle) { %><br><%= org.subtitle %><% } %></div>
+    <div class="muted small"><b><%= org.name %></b><% if (org.registration) { %> <span class="regtxt"><%= org.registration %></span><% } %><% if (org.subtitle) { %><br><%= org.subtitle %><% } %></div>
     <% if (flash) { %><div class="alert <%= flash.type %>" style="margin-top:1rem"><%= flash.msg %></div><% } %>
     <form method="post" action="/login" autocomplete="on">
       <input type="hidden" name="_csrf" value="<%= csrf %>">

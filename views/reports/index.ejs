@@ -14,7 +14,7 @@
 <% if (can('entitlements.view') && can('reports.export')) { %>
 <div class="card"><div class="cardhead"><h2>طباعة الصرف بالتوقيع — <%= U.periodLabel(period) %></h2>
 <div class="btns"><a class="btn gold" href="/entitlements/<%= period %>/sheet" target="_blank" rel="noopener"><%- icon('print') %> كشف التوقيع بالاستلام</a>
-<a class="btn gold" href="/entitlements/<%= period %>/receipts" target="_blank" rel="noopener"><%- icon('doc') %> إيصال لكل أسرة</a>
+<a class="btn gold" href="/entitlements/<%= period %>/receipts-compact" target="_blank" rel="noopener"><%- icon('doc') %> كشف الاستلام المجمّع</a> <a class="btn sec" href="/statements">أرشيف الكشوف الشهرية</a> <a class="btn sec" href="/entitlements/<%= period %>/receipts" target="_blank" rel="noopener">إيصال كبير لكل أسرة</a>
 <a class="btn sec" href="/entitlements/<%= period %>/sheet?only=unpaid" target="_blank" rel="noopener">كشف من لم يستلم</a></div></div>
 <p class="small muted" style="margin:0">الكشف: جدول بكل الأسر وخانة توقيع وتاريخ أمام كل أسرة. الإيصالات: إيصال مستقل لكل أسرة (إيصالان في كل صفحة A4) فيه الكفالة والإعانة والمبلغ بالحروف وخانة توقيع المستلم.</p></div>
 <% } %>

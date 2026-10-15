@@ -17,7 +17,7 @@ tfoot td { background: #f6efdc; font-weight: 700; height: auto; border-top: 2px 
 <div class="sheet">
   <div class="hdr">
     <% if (logo) { %><img src="<%= logo %>" alt=""><% } %>
-    <div class="org"><b><%= org.name %></b><span><%= org.subtitle || '' %></span></div>
+    <div class="org"><b><%= org.name %> <small class="reg"><%= org.registration || '' %></small></b><span><%= org.subtitle || '' %></span></div>
     <div class="ttl"><h1>كشف التوقيع بالاستلام</h1><div>كفالة وإعانة شهر <b><%= U.periodLabel(period) %></b><%= onlyUnpaid ? ' — الأسر التي لم تستلم' : '' %></div><div>العملة: <%= org.currency %> · تاريخ الطباعة: <span class="num"><%= U.todayISO() %></span></div></div>
   </div>
   <table>

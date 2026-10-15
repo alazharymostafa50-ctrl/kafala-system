@@ -1,0 +1,83 @@
+<%- include('../partials/printhead') %>
+<%
+  const logo = forPdf ? assets.logo : org.logo;
+  const C = (v) => U.toCents(v || 0);
+  const pages = []; for (let i = 0; i < rows.length; i += per) pages.push(rows.slice(i, i + per));
+  const sum = (list, k) => list.reduce((a, r) => a + C(r[k]), 0);
+  const savedAt = new Date(st.created_at).toLocaleString('ar-EG', { timeZone: 'Africa/Cairo', dateStyle: 'medium', timeStyle: 'short' });
+%>
+<style>
+.pg { break-after: page; page-break-after: always; }
+.pg:last-child { break-after: auto; page-break-after: auto; }
+.rh { display: flex; align-items: center; gap: 10px; border: 1.5px solid #054834; border-radius: 10px; padding: 6px 10px; margin-bottom: 6px; }
+.rh img { width: 54px; height: 54px; }
+.rh .o b { color: #054834; font-size: 12.5pt; display: block; }
+.rh .o span { font-size: 8.5pt; color: #555; }
+.rh .t { margin-inline-start: auto; text-align: left; }
+.rh .t h2 { margin: 0; font-size: 13pt; color: #054834; }
+.rh .t div { font-size: 8.5pt; color: #555; }
+table.k { width: 100%; border-collapse: collapse; font-size: 10pt; }
+table.k th { background: #054834; color: #fff; border: 1px solid #054834; padding: 3px 4px; font-weight: 700; }
+table.k th.sub { background: #e6f2ec; color: #054834; border-color: #b9c4bf; }
+table.k td { border: 1px solid #b9c4bf; padding: 2px 6px; height: 9.6mm; vertical-align: middle; }
+table.k td.c { text-align: center; }
+table.k td.n { text-align: center; color: #666; width: 8mm; }
+table.k td.ph { width: 26mm; text-align: center; }
+table.k td.mo { width: 18mm; text-align: center; }
+table.k td.due { width: 22mm; text-align: center; font-weight: 700; background: #fbf7ea; }
+table.k td.dt { width: 20mm; }
+table.k td.sig { width: 36mm; }
+table.k tr { break-inside: avoid; }
+table.k tfoot td { height: auto; font-weight: 700; background: #f6efdc; border-top: 2px solid #b8963e; padding: 4px 6px; }
+.words { font-size: 9.5pt; background: #f6f9f7; border-radius: 6px; padding: 5px 8px; margin-top: 6px; }
+.signs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-top: 12px; font-size: 9.5pt; break-inside: avoid; }
+.signs div { border-top: 1px solid #999; padding-top: 5px; min-height: 34px; }
+.meta { font-size: 8pt; color: #777; margin-top: 4px; }
+.sub2 { background: #f3f7f5; border-bottom: 1px solid #cfdcd6; padding: 6px 14px; font-size: 10pt; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.sub2 a { color: #054834; font-weight: 700; }
+.old { background: #fff4d6; color: #7a5f1c; padding: 6px 14px; font-size: 10pt; }
+@media print { .sub2, .old { display: none; } }
+</style>
+<% if (!forPdf) { %>
+<div class="sub2">عدد الأسر في الصفحة:
+  <% [15, 20].forEach(n => { %><a href="?per=<%= n %>" <%- per === n ? 'style="text-decoration:underline"' : '' %>><%= n %> أسرة</a><% }) %>
+  · <a href="/statements">أرشيف كشوف كل الشهور</a>
+  · <span>نسخة رقم <%= st.version %> محفوظة <%= savedAt %></span>
+</div>
+<% if (!isLatest) { %><div class="old">هذه نسخة قديمة محفوظة من الكشف، وتوجد نسخة أحدث لنفس الشهر في الأرشيف.</div><% } %>
+<% } %>
+<div class="sheet">
+<% pages.forEach((list, p) => { const last = p === pages.length - 1; %>
+<div class="pg">
+  <div class="rh">
+    <% if (logo) { %><img src="<%= logo %>" alt=""><% } %>
+    <div class="o"><b><%= org.name %> <small class="reg"><%= org.registration || '' %></small></b><span><%= org.subtitle || '' %></span></div>
+    <div class="t"><h2>كشف استلام الكفالة والإعانة</h2><div>شهر <b><%= U.periodLabel(period) %></b> · صفحة <%= p + 1 %> من <%= pages.length %></div><div>العملة: <%= org.currency %></div></div>
+  </div>
+  <table class="k">
+    <thead>
+      <tr><th rowspan="2">م</th><th rowspan="2">اسم ولي الأمر</th><th rowspan="2">رقم التليفون</th><th colspan="2">المبلغ</th><th rowspan="2">المبلغ المستحق</th><th rowspan="2">التاريخ</th><th rowspan="2">التوقيع</th></tr>
+      <tr><th class="sub">كفالة</th><th class="sub">إعانة</th></tr>
+    </thead>
+    <tbody>
+    <% list.forEach((r, i) => { %>
+      <tr><td class="n"><%= p * per + i + 1 %></td><td><b><%= r.guardian %></b></td><td class="ph num"><%= r.phone %></td>
+      <td class="mo num"><%= C(r.kafala) ? fmt(r.kafala) : '—' %></td><td class="mo num"><%= C(r.aid) ? fmt(r.aid) : '—' %></td>
+      <td class="due num"><%= fmt(r.due) %></td><td class="dt"></td><td class="sig"></td></tr>
+    <% }) %>
+    </tbody>
+    <tfoot>
+      <tr><td colspan="3">إجمالي الصفحة (<%= list.length %> أسرة)</td><td class="c num"><%= fmt(U.fromCents(sum(list, 'kafala'))) %></td><td class="c num"><%= fmt(U.fromCents(sum(list, 'aid'))) %></td><td class="c num"><%= fmt(U.fromCents(sum(list, 'due'))) %></td><td colspan="2"></td></tr>
+      <% if (last && pages.length > 1) { %><tr><td colspan="3">الإجمالي الكلي (<%= rows.length %> أسرة)</td><td class="c num"><%= fmt(U.fromCents(sum(rows, 'kafala'))) %></td><td class="c num"><%= fmt(U.fromCents(sum(rows, 'aid'))) %></td><td class="c num"><%= fmt(U.fromCents(sum(rows, 'due'))) %></td><td colspan="2"></td></tr><% } %>
+    </tfoot>
+  </table>
+  <% if (last) { %>
+  <div class="words">إجمالي الكشف: <%= words(sum(rows, 'due')) %></div>
+  <div class="signs"><div>أمين الصندوق</div><div>المحاسب</div><div>مسؤول الكفالات</div><div>ختم الجمعية</div></div>
+  <% } %>
+  <div class="meta">نسخة محفوظة رقم <%= st.version %> بتاريخ <%= savedAt %></div>
+</div>
+<% }) %>
+</div>
+<% if (!forPdf) { %><script src="/static/js/print.js?v=<%= v %>"></script><% } %>
+</body></html>
