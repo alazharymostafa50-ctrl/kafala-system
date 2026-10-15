@@ -47,7 +47,7 @@
     <% } %>
     <div class="grp">النظام</div>
     <%- nav('/notifications', 'bell', 'التنبيهات', null, notifCount ? `<i class="badge-n">${notifCount}</i>` : '') %>
-    <%- nav('/import', 'import', 'استيراد من Excel', 'import.run') %>
+    <% if (!inPoor) { %><%- nav('/import', 'import', 'استيراد من Excel', 'import.run') %><% } %>
     <%- nav('/admin/users', 'users', 'المستخدمون والأدوار', 'users.manage') %>
     <%- nav('/admin/settings', 'settings', 'الإعدادات', 'settings.manage') %>
     <%- nav('/admin/audit', 'log', 'سجل التدقيق', 'audit.view') %>
