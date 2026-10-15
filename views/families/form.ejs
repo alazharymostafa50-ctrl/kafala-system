@@ -6,11 +6,11 @@
 <input type="hidden" name="_csrf" value="<%= csrf %>">
 
 <% const st = old('support_type', f.support_type || 'kafala'); %>
-<fieldset class="money"><legend><span class="stepno">1</span> البند (الأسرة بتاخد إيه؟) <span class="req">*</span></legend>
+<fieldset class="money"><legend><span class="stepno">1</span> البند (ماذا تستحق الأسرة؟) <span class="req">*</span></legend>
   <div class="choice big3">
     <label class="choicebox"><input type="radio" name="support_type" value="kafala" <%= st==='kafala'?'checked':'' %>> <span><b>كفالة</b><small>كفالة أيتام فقط</small></span></label>
     <label class="choicebox"><input type="radio" name="support_type" value="aid" <%= st==='aid'?'checked':'' %>> <span><b>إعانة</b><small>مساعدة شهرية فقط</small></span></label>
-    <label class="choicebox"><input type="radio" name="support_type" value="both" <%= st==='both'?'checked':'' %>> <span><b>كفالة وإعانة</b><small>الاتنين مع بعض</small></span></label>
+    <label class="choicebox"><input type="radio" name="support_type" value="both" <%= st==='both'?'checked':'' %>> <span><b>كفالة وإعانة</b><small>الاثنان معًا</small></span></label>
   </div>
 </fieldset>
 

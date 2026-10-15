@@ -21,7 +21,7 @@ router.post('/families/:id(\\d+)/delete', can('families.archive'), h(async (req,
     return f;
   });
   try { await require('../lib/entitlements').autoSync(); } catch (e) { /* لا يوقف الحذف */ }
-  flash(req, 'success', `تم حذف «${f.family_name}» ونقلها لسلة المحذوفات. تقدر ترجعها في أي وقت.`);
+  flash(req, 'success', `تم حذف «${f.family_name}» ونقلها إلى سلة المحذوفات. يمكنك استرجاعها في أي وقت.`);
   res.redirect('/families');
 }));
 
@@ -29,7 +29,7 @@ router.post('/families/:id(\\d+)/restore', can('families.archive'), h(async (req
   const id = U.intId(req.params.id);
   const f = await db.tx(async (c) => {
     const f = await c.one('SELECT * FROM families WHERE id=$1 FOR UPDATE', [id]);
-    if (!f || !f.deleted_at) throw new U.UserError('الأسرة مش موجودة في سلة المحذوفات', 404);
+    if (!f || !f.deleted_at) throw new U.UserError('الأسرة غير موجودة في سلة المحذوفات', 404);
     await c.query(`UPDATE families SET deleted_at=NULL, deleted_by=NULL, status=COALESCE(status_before_delete, 'active'), status_before_delete=NULL, updated_at=now() WHERE id=$1`, [id]);
     await audit.log(req, 'restore', 'family', id, { after: { status: f.status_before_delete } }, c);
     return f;
@@ -50,7 +50,7 @@ router.post('/members/:mid(\\d+)/delete', can('families.archive'), h(async (req,
     return m;
   });
   try { await require('../lib/entitlements').autoSync(); } catch (e) { /* */ }
-  flash(req, 'success', `تم حذف «${m.full_name}» ونقله لسلة المحذوفات.`);
+  flash(req, 'success', `تم حذف «${m.full_name}» ونقله إلى سلة المحذوفات.`);
   res.redirect(`/families/${m.family_id}`);
 }));
 
@@ -58,7 +58,7 @@ router.post('/members/:mid(\\d+)/restore', can('families.archive'), h(async (req
   const mid = U.intId(req.params.mid);
   const m = await db.tx(async (c) => {
     const m = await c.one('SELECT * FROM family_members_all WHERE id=$1 FOR UPDATE', [mid]);
-    if (!m || !m.deleted_at) throw new U.UserError('الفرد مش موجود في سلة المحذوفات', 404);
+    if (!m || !m.deleted_at) throw new U.UserError('الفرد غير موجود في سلة المحذوفات', 404);
     await c.query('UPDATE family_members_all SET deleted_at=NULL, deleted_by=NULL, updated_at=now() WHERE id=$1', [mid]);
     await audit.log(req, 'restore', 'family_member', mid, {}, c);
     return m;
@@ -78,7 +78,7 @@ router.post('/sponsors/:id(\\d+)/delete', can('sponsors.edit'), h(async (req, re
     await audit.log(req, 'delete', 'sponsor', id, { before: { status: s.status } }, c);
     return s;
   });
-  flash(req, 'success', `تم حذف الكفيل «${s.full_name}» ونقله لسلة المحذوفات.`);
+  flash(req, 'success', `تم حذف الكفيل «${s.full_name}» ونقله إلى سلة المحذوفات.`);
   res.redirect('/sponsors');
 }));
 
@@ -86,7 +86,7 @@ router.post('/sponsors/:id(\\d+)/restore', can('sponsors.edit'), h(async (req, r
   const id = U.intId(req.params.id);
   const s = await db.tx(async (c) => {
     const s = await c.one('SELECT * FROM sponsors WHERE id=$1 FOR UPDATE', [id]);
-    if (!s || !s.deleted_at) throw new U.UserError('الكفيل مش موجود في سلة المحذوفات', 404);
+    if (!s || !s.deleted_at) throw new U.UserError('الكفيل غير موجود في سلة المحذوفات', 404);
     await c.query(`UPDATE sponsors SET deleted_at=NULL, deleted_by=NULL, status=COALESCE(status_before_delete, 'active'), status_before_delete=NULL, updated_at=now() WHERE id=$1`, [id]);
     await audit.log(req, 'restore', 'sponsor', id, {}, c);
     return s;

@@ -1,12 +1,12 @@
 <%- include('partials/head', { title }) %>
 <% const when = (d) => new Date(d).toLocaleString('ar-EG', { timeZone: 'Africa/Cairo', dateStyle: 'medium', timeStyle: 'short' }); %>
-<div class="pagehead"><div><h1><%- icon('trash') %> سلة المحذوفات</h1><p>أي حاجة اتحذفت بتيجي هنا، وتقدر ترجّعها بضغطة زرار. العمليات المالية (التبرعات والصرف والمصروفات) مبتتحذفش؛ بتتلغي بقيد عكسي عشان الحسابات تفضل مظبوطة.</p></div></div>
+<div class="pagehead"><div><h1><%- icon('trash') %> سلة المحذوفات</h1><p>كل ما يُحذف يُنقل إلى هنا، ويمكنك استرجاعه بضغطة زر. أما العمليات المالية (التبرعات والصرف والمصروفات) فلا تُحذف، بل تُلغى بقيد عكسي حفاظًا على صحة الحسابات.</p></div></div>
 
-<% if (!families.length && !members.length && !sponsors.length) { %><div class="card"><p class="empty">السلة فاضية 👌</p></div><% } %>
+<% if (!families.length && !members.length && !sponsors.length) { %><div class="card"><p class="empty">السلة فارغة.</p></div><% } %>
 
 <% if (families.length) { %>
 <div class="card"><h2>الأسر المحذوفة (<%= families.length %>)</h2>
-<div class="tablewrap"><table class="t"><thead><tr><th>رقم الملف</th><th>ولي الأمر</th><th>الأسرة</th><th>اتحذفت</th><th>حذفها</th><th></th></tr></thead><tbody>
+<div class="tablewrap"><table class="t"><thead><tr><th>رقم الملف</th><th>ولي الأمر</th><th>الأسرة</th><th>تاريخ الحذف</th><th>حذفها</th><th></th></tr></thead><tbody>
 <% families.forEach(f => { %><tr><td><a href="/families/<%= f.id %>"><%= f.file_no %></a></td><td><b><%= f.guardian %></b></td><td><%= f.family_name %></td><td class="small"><%= when(f.deleted_at) %></td><td class="small"><%= f.by_name || '—' %></td>
 <td><form method="post" action="/families/<%= f.id %>/restore" class="inline" data-confirm="استرجاع «<%= esc(f.family_name) %>»؟"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn sm"><%- icon('restore') %> استرجاع</button></form></td></tr><% }) %>
 </tbody></table></div></div>
@@ -14,7 +14,7 @@
 
 <% if (members.length) { %>
 <div class="card"><h2>الأفراد المحذوفون (<%= members.length %>)</h2>
-<div class="tablewrap"><table class="t"><thead><tr><th>الاسم</th><th>الأسرة</th><th>اتحذف</th><th>حذفه</th><th></th></tr></thead><tbody>
+<div class="tablewrap"><table class="t"><thead><tr><th>الاسم</th><th>الأسرة</th><th>تاريخ الحذف</th><th>حذفه</th><th></th></tr></thead><tbody>
 <% members.forEach(m => { %><tr><td><b><%= m.full_name %></b></td><td><%= m.file_no %> — <%= m.family_name %><%- m.fam_deleted ? ' <span class="badge muted">الأسرة محذوفة</span>' : '' %></td><td class="small"><%= when(m.deleted_at) %></td><td class="small"><%= m.by_name || '—' %></td>
 <td><form method="post" action="/members/<%= m.id %>/restore" class="inline" data-confirm="استرجاع «<%= esc(m.full_name) %>»؟"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn sm"><%- icon('restore') %> استرجاع</button></form></td></tr><% }) %>
 </tbody></table></div></div>
@@ -22,7 +22,7 @@
 
 <% if (sponsors.length) { %>
 <div class="card"><h2>الكفلاء المحذوفون (<%= sponsors.length %>)</h2>
-<div class="tablewrap"><table class="t"><thead><tr><th>رقم الكفيل</th><th>الاسم</th><th>اتحذف</th><th>حذفه</th><th></th></tr></thead><tbody>
+<div class="tablewrap"><table class="t"><thead><tr><th>رقم الكفيل</th><th>الاسم</th><th>تاريخ الحذف</th><th>حذفه</th><th></th></tr></thead><tbody>
 <% sponsors.forEach(s => { %><tr><td><%= s.sponsor_no %></td><td><b><%= s.full_name %></b></td><td class="small"><%= when(s.deleted_at) %></td><td class="small"><%= s.by_name || '—' %></td>
 <td><form method="post" action="/sponsors/<%= s.id %>/restore" class="inline" data-confirm="استرجاع الكفيل «<%= esc(s.full_name) %>»؟"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn sm"><%- icon('restore') %> استرجاع</button></form></td></tr><% }) %>
 </tbody></table></div></div>

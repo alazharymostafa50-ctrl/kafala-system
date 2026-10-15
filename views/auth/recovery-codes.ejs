@@ -1,11 +1,11 @@
 <%- include('../partials/head', { title }) %>
-<div class="pagehead"><div><h1>أكواد استرجاع كلمة المرور</h1><p>احفظ الأكواد دي دلوقتي. <b>مش هتظهر تاني.</b></p></div></div>
+<div class="pagehead"><div><h1>أكواد استرجاع كلمة المرور</h1><p>احفظ هذه الأكواد الآن. <b>لن تظهر مرة أخرى.</b></p></div></div>
 <div class="card" style="max-width:560px">
-  <div class="alert warning">اطبعها أو صوّرها واحفظها في مكان آمن بعيد عن الجهاز. لو نسيت كلمة المرور، ادخل على «نسيت كلمة المرور؟» في صفحة الدخول واستخدم أي كود منهم. كل كود بيشتغل مرة واحدة بس.</div>
+  <div class="alert warning">اطبعها أو صوّرها واحفظها في مكان آمن بعيدًا عن الجهاز. إذا نسيت كلمة المرور، اضغط «نسيت كلمة المرور؟» في صفحة الدخول واستخدم أي كود منها. كل كود يُستخدم مرة واحدة فقط.</div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin:1rem 0;direction:ltr">
     <% codes.forEach((c, i) => { %><div style="font:700 1.25rem/1.6 monospace;letter-spacing:.12em;border:1px dashed #b8963e;border-radius:8px;padding:.5rem;text-align:center;background:#fffdf6"><%= i + 1 %>. <%= c %></div><% }) %>
   </div>
   <p class="small muted">الحساب: <b dir="ltr"><%= user.username %></b> — <%= org.name %> — تاريخ الإنشاء: <%= U.todayISO() %></p>
-  <div class="btns noprint"><button type="button" class="btn gold" data-print><%- icon('print') %> طباعة الأكواد</button><a class="btn sec" href="/account/password">تم، حفظتها</a></div>
+  <div class="btns noprint"><button type="button" class="btn gold" data-print><%- icon('print') %> طباعة الأكواد</button><a class="btn sec" href="/account/password">تم الحفظ</a></div>
 </div>
 <%- include('../partials/foot') %>

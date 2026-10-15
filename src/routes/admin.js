@@ -138,12 +138,12 @@ const logoUpload = memoryUpload(2).single('logo');
 // البيانات التجريبية: إضافة وحذف بالكامل
 router.post('/admin/demo/seed', can('settings.manage'), h(async (req, res) => {
   const r = await require('../lib/demo').seed(req.user, req);
-  flash(req, 'success', `تمت إضافة بيانات تجريبية (${r.families} أسر وكفلاء وتبرعات ومصروف وكشف الشهر). كل حاجة تجريبية مكتوب جنبها «(تجريبي)».`);
+  flash(req, 'success', `تمت إضافة بيانات تجريبية (${r.families} أسر وكفلاء وتبرعات ومصروف وكشف الشهر). وكل سجل تجريبي مكتوب بجانبه «(تجريبي)».`);
   res.redirect('/');
 }));
 router.post('/admin/demo/purge', can('settings.manage'), h(async (req, res) => {
   const r = await require('../lib/demo').purge(req.user, req);
-  flash(req, 'success', `تم حذف كل البيانات التجريبية (${r.families} أسر وكل ما يخصها من حسابات وكشوف). بياناتك الحقيقية زي ما هي.`);
+  flash(req, 'success', `تم حذف كل البيانات التجريبية (${r.families} أسر وكل ما يخصها من حسابات وكشوف). وبياناتك الحقيقية لم تتأثر.`);
   res.redirect('/admin/settings');
 }));
 

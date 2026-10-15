@@ -11,7 +11,7 @@
   <div class="authcard">
     <img src="<%= org.logo %>" alt="شعار الجمعية">
     <h1>نسيت كلمة المرور</h1>
-    <div class="muted small">اكتب اسم المستخدم وواحد من <b>أكواد الاسترجاع</b> اللي حفظتها، واختار كلمة مرور جديدة. كل كود بيشتغل مرة واحدة بس.</div>
+    <div class="muted small">اكتب اسم المستخدم وأحد <b>أكواد الاسترجاع</b> التي حفظتها، ثم اختر كلمة مرور جديدة. كل كود يُستخدم مرة واحدة فقط.</div>
     <% if (flash) { %><div class="alert <%= flash.type %>" style="margin-top:1rem"><%= flash.msg %></div><% } %>
     <form method="post" action="/forgot" autocomplete="off">
       <input type="hidden" name="_csrf" value="<%= csrf %>">
@@ -22,8 +22,8 @@
       <button class="btn" type="submit">تعيين كلمة المرور الجديدة</button>
     </form>
     <div class="alert info" style="margin-top:1rem;text-align:right">
-      <b>معندكش أكواد استرجاع؟</b><br>
-      • الموظف: اطلب من مدير النظام يعمل لك كلمة مرور جديدة من «المستخدمين».<br>
+      <b>ليست لديك أكواد استرجاع؟</b><br>
+      • الموظف: اطلب من مدير النظام تعيين كلمة مرور جديدة لك من صفحة «المستخدمين».<br>
       • مدير النظام: استخدم <a href="/recover">استعادة حساب المدير بمفتاح التفعيل</a>.
     </div>
     <p class="small" style="margin-top:1rem"><a href="/login">العودة لتسجيل الدخول</a></p>

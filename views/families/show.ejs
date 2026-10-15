@@ -8,10 +8,10 @@
     <% if (can('families.edit')) { %><a class="btn sec" href="/families/<%= f.id %>/edit"><%- icon('edit') %> تعديل</a>
     <a class="btn" href="/families/<%= f.id %>/members/new"><%- icon('plus') %> إضافة فرد</a><% } %>
     <% if (can('documents.view') || can('documents.upload')) { %><a class="btn sec" href="/families/<%= f.id %>/documents"><%- icon('doc') %> المستندات</a><% } %>
-    <% if (can('families.archive') && !f.deleted_at) { %><form method="post" action="/families/<%= f.id %>/delete" class="inline" data-confirm="هل أنت متأكد من حذف «<%= esc(f.family_name) %>»؟ هتتنقل لسلة المحذوفات ومش هتدخل في الكشوف الجاية، وتقدر ترجعها في أي وقت."><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn danger"><%- icon('trash') %> حذف الأسرة</button></form><% } %>
+    <% if (can('families.archive') && !f.deleted_at) { %><form method="post" action="/families/<%= f.id %>/delete" class="inline" data-confirm="هل أنت متأكد من حذف «<%= esc(f.family_name) %>»؟ ستُنقل إلى سلة المحذوفات ولن تدخل في الكشوف القادمة، ويمكنك استرجاعها في أي وقت."><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn danger"><%- icon('trash') %> حذف الأسرة</button></form><% } %>
   </div>
 </div>
-<% if (f.deleted_at) { %><div class="alert warning" style="display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap"><span><%- icon('trash') %> الأسرة دي في <a href="/trash">سلة المحذوفات</a>، ومش بتدخل في الكشوف.</span>
+<% if (f.deleted_at) { %><div class="alert warning" style="display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap"><span><%- icon('trash') %> هذه الأسرة في <a href="/trash">سلة المحذوفات</a>، ولا تدخل في الكشوف.</span>
 <% if (can('families.archive')) { %><form method="post" action="/families/<%= f.id %>/restore" class="inline" data-confirm="استرجاع «<%= esc(f.family_name) %>»؟"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn sm"><%- icon('restore') %> استرجاع الأسرة</button></form><% } %></div><% } %>
 
 <% if (notes.length) { %><div class="alert warning"><b>تنبيهات مفتوحة:</b><ul style="margin:.3rem 0 0;padding-inline-start:1.2rem"><% notes.forEach(n => { %><li><%= n.title %></li><% }) %></ul></div><% } %>
@@ -55,7 +55,7 @@
     <td class="actions">
       <a class="btn sm sec" href="/members/<%= m.id %>/history">السجل</a>
       <% if (can('families.edit')) { %><a class="btn sm sec" href="/members/<%= m.id %>/edit">تعديل</a><% } %>
-      <% if (can('families.archive')) { %><form method="post" action="/members/<%= m.id %>/delete" class="inline" data-confirm="هل أنت متأكد من حذف «<%= esc(m.full_name) %>»؟ هيتنقل لسلة المحذوفات وتقدر ترجعه في أي وقت."><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn sm danger"><%- icon('trash') %> حذف</button></form><% } %>
+      <% if (can('families.archive')) { %><form method="post" action="/members/<%= m.id %>/delete" class="inline" data-confirm="هل أنت متأكد من حذف «<%= esc(m.full_name) %>»؟ سيُنقل إلى سلة المحذوفات ويمكنك استرجاعه في أي وقت."><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn sm danger"><%- icon('trash') %> حذف</button></form><% } %>
     </td>
   </tr>
   <% if (can('eligibility.decide') || (can('families.edit') && m.gender === 'female' && m.marital_status !== 'married')) { %>

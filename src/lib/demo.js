@@ -31,7 +31,7 @@ async function status() {
 }
 
 async function seed(user, req) {
-  if ((await status()).exists) throw new U.UserError('البيانات التجريبية موجودة بالفعل. احذفها الأول لو عايز تعملها من جديد.');
+  if ((await status()).exists) throw new U.UserError('البيانات التجريبية موجودة بالفعل. احذفها أولًا إذا أردت إنشاءها من جديد.');
   const today = U.todayISO(); const period = today.slice(0, 7);
   const famIds = [];
   await db.tx(async (c) => {
@@ -73,7 +73,7 @@ async function seed(user, req) {
     await finance.post(c, { date: today, fund: 'general', direction: 'out', amount: e.amount, source_type: 'expense', source_id: e.id, description: `مصروف ${e.expense_no}`, user });
     await c.query(`UPDATE expenses SET status='paid', paid_by=$2, paid_at=now() WHERE id=$1`, [e.id, user.id]);
   });
-  // كشف الشهر للأسر التجريبية + صرف لبعضها (كامل وجزئي) عشان تبان كل الحالات
+  // كشف الشهر للأسر التجريبية + صرف لبعضها (كامل وجزئي) لتظهر جميع الحالات
   await db.tx(async (c) => {
     const run = await c.one('SELECT * FROM monthly_runs WHERE period=$1', [period]);
     if (run && run.status === 'closed') return;
@@ -134,7 +134,7 @@ async function purge(user, req) {
     await c.query('DELETE FROM guardians WHERE family_id = ANY($1)', [fam]);
     await c.query('DELETE FROM families WHERE id = ANY($1)', [fam]);
     await c.query('DELETE FROM sponsors WHERE id = ANY($1)', [spon]);
-    // الكشوف الشهرية الفاضية بعد الحذف، والنسخ المحفوظة والتقارير اللي فيها أرقام تجريبية (هتتعمل من جديد تلقائيًا)
+    // الكشوف الشهرية الفارغة بعد الحذف، والنسخ المحفوظة والتقارير اللي فيها أرقام تجريبية (تُنشأ من جديد تلقائيًا)
     await c.query('DELETE FROM monthly_runs r WHERE NOT EXISTS (SELECT 1 FROM monthly_entitlements e WHERE e.run_id=r.id)');
     const sts = await c.many('SELECT id, data FROM monthly_statements');
     const stDel = sts.filter((s) => (s.data.rows || []).some((r) => fileNos.has(r.file_no))).map((s) => s.id);

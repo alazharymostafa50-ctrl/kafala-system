@@ -7,11 +7,11 @@
 <p class="small muted" style="margin:.5rem 0 0">الملف لا يحتوي على صور المستندات المرفوعة ولا كلمات المرور.</p></div>
 <div class="card" id="demo"><h2>بيانات تجريبية للتدريب</h2>
 <% if (demo.exists) { %>
-  <div class="alert warning">فيه بيانات تجريبية في النظام دلوقتي: <%= demo.families %> أسر، <%= demo.sponsors %> كفلاء، <%= demo.donations %> تبرعات، <%= demo.expenses %> مصروف. <b>احذفها قبل ما تبدأ الشغل الحقيقي.</b></div>
-  <form method="post" action="/admin/demo/purge" data-confirm="هل أنت متأكد من حذف كل البيانات التجريبية؟ هتتمسح الأسر والكفلاء والتبرعات والصرف التجريبي نهائيًا، وبياناتك الحقيقية مش هتتأثر."><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn danger"><%- icon('trash') %> حذف كل البيانات التجريبية</button></form>
+  <div class="alert warning">توجد بيانات تجريبية في النظام حاليًا: <%= demo.families %> أسر، <%= demo.sponsors %> كفلاء، <%= demo.donations %> تبرعات، <%= demo.expenses %> مصروف. <b>احذفها قبل بدء العمل الفعلي.</b></div>
+  <form method="post" action="/admin/demo/purge" data-confirm="هل أنت متأكد من حذف كل البيانات التجريبية؟ ستُحذف الأسر والكفلاء والتبرعات والصرف التجريبي نهائيًا، ولن تتأثر بياناتك الحقيقية."><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn danger"><%- icon('trash') %> حذف كل البيانات التجريبية</button></form>
 <% } else { %>
-  <p>عايز تشوف النظام شغال قبل ما تدخل بياناتك؟ الزرار ده بيضيف مثال وهمي على كل حاجة: 8 أسر (كفالة وإعانة والاتنين) بأفرادها، 3 كفلاء، تبرعات، مصروف، وكشف الشهر الحالي وفيه ناس استلمت وناس لأ. كل اسم مكتوب جنبه «(تجريبي)»، وتقدر تمسحهم كلهم بضغطة زرار بعدين.</p>
-  <form method="post" action="/admin/demo/seed" data-confirm="إضافة بيانات تجريبية للنظام؟ تقدر تحذفها كلها بعدين من نفس المكان."><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn gold"><%- icon('plus') %> إضافة بيانات تجريبية</button></form>
+  <p>هل تريد تجربة النظام قبل إدخال بياناتك؟ يضيف هذا الزر أمثلة وهمية لكل الأقسام: 8 أسر (كفالة، وإعانة، وكفالة وإعانة) بأفرادها، و3 كفلاء، وتبرعات، ومصروفًا، وكشف الشهر الحالي وفيه من استلم ومن لم يستلم. كل اسم مكتوب بجانبه «(تجريبي)»، ويمكنك حذفها جميعًا بضغطة زر لاحقًا.</p>
+  <form method="post" action="/admin/demo/seed" data-confirm="إضافة بيانات تجريبية إلى النظام؟ يمكنك حذفها كلها لاحقًا من المكان نفسه."><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn gold"><%- icon('plus') %> إضافة بيانات تجريبية</button></form>
 <% } %>
 </div>
 <div class="card"><h2>بيانات الجمعية والهوية</h2>
@@ -43,7 +43,7 @@
   <label class="check"><input type="checkbox" name="separation_of_duties" value="1" <%= f.separation_of_duties ? 'checked' : '' %>> فصل المهام: لا يعتمد المستخدم عملية أو تقريرًا أنشأه بنفسه</label>
   <label class="check"><input type="checkbox" name="disbursement_requires_approval" value="1" <%= f.disbursement_requires_approval ? 'checked' : '' %>> الصرف للأسر يتطلب اعتمادًا قبل تسجيله ماليًا</label>
   <label class="check"><input type="checkbox" name="allow_partial_disbursement" value="1" <%= f.allow_partial_disbursement ? 'checked' : '' %>> السماح بالصرف الجزئي</label>
-  <label class="check"><input type="checkbox" name="auto_generate" value="1" <%= f.auto_generate !== false ? 'checked' : '' %>> الحساب التلقائي: كشف الشهر يتعمل لوحده، والأسر الجديدة تتضاف له، والمبالغ تتحسب تلقائيًا لما بيانات الأسرة تتغير</label>
+  <label class="check"><input type="checkbox" name="auto_generate" value="1" <%= f.auto_generate !== false ? 'checked' : '' %>> الحساب التلقائي: يُنشأ كشف الشهر تلقائيًا، وتُضاف إليه الأسر الجديدة، وتُعاد حساب المبالغ عند تغيّر بيانات الأسرة</label>
   <label class="check"><input type="checkbox" name="allow_general_fund_for_kafala" value="1" <%= f.allow_general_fund_for_kafala ? 'checked' : '' %>> السماح بصرف الكفالات من الصندوق العام عند الحاجة</label>
 </div></div>
 <div class="card"><h2>المستندات</h2><div class="fields">

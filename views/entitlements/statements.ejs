@@ -1,7 +1,7 @@
 <%- include('../partials/head', { title }) %>
-<div class="pagehead"><div><h1>أرشيف كشوف الاستلام الشهرية</h1><p>المنصة تحفظ كشف كل شهر تلقائيًا أول ما تفتحه أو تطبعه. لو اتغيرت مبالغ الشهر بعد كده، بتتحفظ نسخة جديدة والقديمة بتفضل موجودة.</p></div></div>
+<div class="pagehead"><div><h1>أرشيف كشوف الاستلام الشهرية</h1><p>تحفظ المنصة كشف كل شهر تلقائيًا عند فتحه أو طباعته. وإذا تغيّرت مبالغ الشهر بعد ذلك، تُحفظ نسخة جديدة وتبقى النسخة القديمة.</p></div></div>
 <div class="tablewrap"><table class="t"><thead><tr><th>الشهر</th><th>الكشف</th><th>النسخة</th><th>عدد الأسر</th><th class="num">إجمالي المستحق</th><th>تاريخ الحفظ</th><th>حفظه</th><th>الإجراء</th></tr></thead><tbody>
-<% if (!list.length) { %><tr><td colspan="8" class="empty">لا توجد كشوف محفوظة بعد. افتح «كشف الاستلام المجمّع» من صفحة الصرف لأي شهر وسيُحفظ تلقائيًا.</td></tr><% } %>
+<% if (!list.length) { %><tr><td colspan="8" class="empty">لا توجد كشوف محفوظة بعد. افتح أي كشف من صفحة الصرف الشهري وسيُحفظ تلقائيًا.</td></tr><% } %>
 <% list.forEach(s => { %>
 <tr><td><b><%= U.periodLabel(s.period) %></b></td><td><%= kinds[s.kind].short %></td><td><%= s.version %> <%- s.is_latest ? '<span class="badge success">الأحدث</span>' : '<span class="badge muted">قديمة</span>' %></td><td><%= s.family_count %></td><td class="num"><%= fmt(s.total_due) %></td>
 <td class="small"><%= new Date(s.created_at).toLocaleString('ar-EG', { timeZone: 'Africa/Cairo', dateStyle: 'medium', timeStyle: 'short' }) %></td><td class="small"><%= s.by_name || '—' %></td>
