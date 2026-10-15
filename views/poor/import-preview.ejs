@@ -1,0 +1,37 @@
+<%- include('../partials/head', { title }) %>
+<% const ok = checked.filter(r => !r.errors.length), bad = checked.filter(r => r.errors.length), warn = ok.filter(r => r.warnings.length); %>
+<div class="pagehead"><div><div class="crumbs"><a href="/poor/import">الاستيراد</a> / <%= b.file_name %></div><h1>مراجعة ملف الاستيراد</h1>
+<p>الملف: <b><%= b.file_name %></b> · <%= b.rows.length %> صفًا · المنطقة الافتراضية: <b><%= L.label('area', b.mapping.defaults.area) %></b> · نوع العطاء: <b><%= L.label('giveType', b.mapping.defaults.give_type) %></b></p></div></div>
+
+<% if (b.status === 'completed') { %>
+  <div class="alert success">تم الاستيراد: أُضيفت <b><%= b.result.added %></b> حالة<%= b.result.warnings ? '، منها ' + b.result.warnings + ' بها تحذيرات' : '' %>. <a href="/poor/cases?area=<%= b.mapping.defaults.area %>">عرض الحالات</a></div>
+  <% if (b.result.failed_rows && b.result.failed_rows.length) { %>
+  <div class="card"><h2>صفوف لم تُستورد (<%= b.result.failed_rows.length %>)</h2><p class="small muted">صحّح بياناتها ثم أضفها من «إضافة حالة» أو في ملف جديد.</p>
+  <table class="t"><thead><tr><th>السطر</th><th>الاسم</th><th>السبب</th></tr></thead><tbody>
+  <% b.result.failed_rows.forEach(f => { %><tr><td><%= f.line %></td><td><b><%= f.name %></b></td><td class="small" style="color:var(--danger)"><%= f.errors.join('، ') %></td></tr><% }) %></tbody></table></div><% } %>
+<% } else if (b.status === 'cancelled') { %>
+  <div class="alert warning">أُلغيت هذه الدفعة.</div>
+<% } else { %>
+<div class="kpis">
+  <div class="kpi ok"><div class="k">ستُضاف</div><div class="v"><%= ok.length %></div></div>
+  <div class="kpi warn"><div class="k">ستُضاف مع تحذير</div><div class="v"><%= warn.length %></div></div>
+  <div class="kpi bad"><div class="k">لن تُضاف (أخطاء)</div><div class="v"><%= bad.length %></div></div>
+</div>
+<div class="card"><h2>الأعمدة التي تعرّف عليها النظام</h2>
+<div class="btns"><% [['full_name','الاسم'],['national_id','الرقم القومي'],['phone','رقم الهاتف'],['family_size','عدد الأفراد'],['area','المنطقة'],['give_type','نوع العطاء'],['reason','سبب الاستحقاق'],['monthly_amount','المبلغ'],['notes','ملاحظات']].forEach(([k, t]) => { %>
+<span class="badge <%= labels[k] ? 'success' : 'muted' %>"><%= t %>: <%= labels[k] ? '«' + labels[k] + '»' : 'غير موجود' %></span><% }) %></div></div>
+<div class="formactions" style="margin-bottom:1rem">
+  <form method="post" action="/poor/import/<%= b.id %>/commit" class="inline" data-confirm="استيراد <%= ok.length %> حالة؟ الصفوف التي بها أخطاء (<%= bad.length %>) لن تُضاف."><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn lg" <%= ok.length ? '' : 'disabled' %>><%- icon('check') %> استيراد <%= ok.length %> حالة</button></form>
+  <form method="post" action="/poor/import/<%= b.id %>/cancel" class="inline" data-confirm="إلغاء هذا الاستيراد؟"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn sec lg">إلغاء</button></form>
+</div>
+<div class="tablewrap"><table class="t">
+<thead><tr><th>السطر</th><th>الاسم</th><th>الرقم القومي</th><th>الهاتف</th><th>المنطقة</th><th>العطاء</th><th>النتيجة</th></tr></thead><tbody>
+<% checked.forEach(r => { const raw = b.rows[r.line - 1]; const nidRaw = b.mapping.cols.national_id !== undefined ? raw[b.mapping.cols.national_id] : ''; %>
+<tr style="<%= r.errors.length ? 'background:#fdf1f0' : r.warnings.length ? 'background:#fffaf0' : '' %>">
+  <td><%= r.line %></td><td><b><%= r.values.full_name || '—' %></b></td><td class="num"><%= nidRaw || '—' %></td><td class="num"><%= r.values.phone || '—' %></td>
+  <td><%= L.label('area', r.values.area) %></td><td><%= L.label('giveType', r.values.give_type) %></td>
+  <td class="small"><% if (r.errors.length) { %><b style="color:var(--danger)">✗ <%= r.errors.join('، ') %></b><% } else { %><span style="color:var(--success)">✓ ستُضاف</span><% } %><% if (r.warnings.length) { %><br><span style="color:#8a6a1f">⚠ <%= r.warnings.join('، ') %></span><% } %></td>
+</tr><% }) %>
+</tbody></table></div>
+<% } %>
+<%- include('../partials/foot') %>

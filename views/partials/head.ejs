@@ -26,6 +26,7 @@
     <%- nav('/poor/monthly', 'calendar', 'الإعانة النقدية الشهرية', 'poor.view') %>
     <%- nav('/poor/gifts', 'doc', 'العطاء العيني', 'poor.view') %>
     <%- nav('/poor/donations', 'wallet', 'صندوق القسم', 'poor.view') %>
+    <%- nav('/poor/import', 'import', 'استيراد من Excel', 'poor.edit') %>
     <% if (can('poor.edit')) { %><%- nav('/trash', 'trash', 'سلة المحذوفات') %><% } %>
     <% if (can('dashboard.view') || can('families.view')) { %><a class="switch" href="/"><%- icon('sponsor') %><span>الانتقال إلى كفالة الأيتام</span></a><% } %>
     <% } else { %>

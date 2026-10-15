@@ -6,6 +6,7 @@
   <a class="tile" href="/poor/monthly/<%= period %>"><%- icon('calendar') %>الإعانة النقدية الشهرية<small>تسجيل من استلم ومن لم يستلم</small></a>
   <a class="tile gold" href="/poor/monthly/<%= period %>/kashf" target="_blank" rel="noopener"><%- icon('print') %>كشف الإعانة النقدية<small>طباعة كشف الشهر بالتوقيع</small></a>
   <a class="tile gold" href="/poor/gifts"><%- icon('doc') %>العطاء العيني<small>كشوف التوزيع العيني بالتوقيع</small></a>
+  <% if (can('poor.edit')) { %><a class="tile" href="/poor/import"><%- icon('import') %>استيراد كشف من Excel<small>إضافة حالات كثيرة مرة واحدة</small></a><% } %>
   <% if (can('poor.finance')) { %><a class="tile" href="/poor/donations"><%- icon('wallet') %>تسجيل تبرع للقسم<small>زكاة أو صدقة</small></a><% } %>
 </div>
 <div class="kpis">

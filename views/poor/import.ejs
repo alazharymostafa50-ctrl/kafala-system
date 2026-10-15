@@ -1,0 +1,25 @@
+<%- include('../partials/head', { title }) %>
+<div class="pagehead"><div><h1>استيراد حالات من Excel</h1><p>ارفع كشفًا موجودًا لديك (Excel أو CSV)، وسيفحصه النظام قبل الإضافة ويُظهر لك الأخطاء والتكرار.</p></div>
+<a class="btn sec" href="/poor/import/template.xlsx"><%- icon('download') %> تنزيل نموذج Excel فارغ</a></div>
+<div class="card">
+<h2>الخطوة 1: ارفع الملف</h2>
+<p class="small muted">يكفي أن يحتوي الملف على عمود «الاسم». الأعمدة الأخرى التي يتعرف عليها النظام تلقائيًا: الرقم القومي، رقم التليفون، عدد أفراد الأسرة، المنطقة، نوع العطاء، سبب الاستحقاق، المبلغ الشهري، ملاحظات.</p>
+<form method="post" action="/poor/import?_csrf=<%= csrf %>" enctype="multipart/form-data" class="fields">
+  <div class="field wide"><label>الملف (xlsx أو csv) <span class="req">*</span></label><input type="file" name="file" required accept=".xlsx,.csv"></div>
+  <div class="field"><label>المنطقة (إذا لم تكن مكتوبة في الملف) <span class="req">*</span></label><select name="area" required><option value="">— اختر —</option><% L.options('area').forEach(o => { %><option value="<%= o.value %>"><%= o.text %></option><% }) %></select></div>
+  <div class="field"><label>نوع العطاء (إذا لم يكن مكتوبًا)</label><select name="give_type"><% L.options('giveType').forEach(o => { %><option value="<%= o.value %>" <%= o.value==='in_kind'?'selected':'' %>><%= o.text %></option><% }) %></select></div>
+  <div class="field"><label>سبب الاستحقاق (إذا لم يكن مكتوبًا)</label><select name="reason"><% L.options('poorReason').forEach(o => { %><option value="<%= o.value %>" <%= o.value==='low_income'?'selected':'' %>><%= o.text %></option><% }) %></select></div>
+  <div class="field"><label>المبلغ الشهري (للنقدي فقط)</label><input name="monthly_amount" inputmode="decimal" placeholder="0"></div>
+  <div class="field"><label>&nbsp;</label><button class="btn"><%- icon('upload') %> رفع وفحص الملف</button></div>
+</form>
+<p class="small muted" style="margin:.6rem 0 0">لن يُضاف أي شيء قبل أن تراجع النتيجة وتضغط «استيراد».</p>
+</div>
+<% if (batches.length) { %>
+<div class="card"><h2>عمليات الاستيراد السابقة</h2>
+<table class="t"><thead><tr><th>الملف</th><th>عدد الصفوف</th><th>النتيجة</th><th>بواسطة</th><th>التاريخ</th><th></th></tr></thead><tbody>
+<% batches.forEach(b => { %><tr><td><%= b.file_name %></td><td><%= b.n %></td>
+<td><%- b.status === 'completed' ? '<span class="badge success">أُضيف ' + b.result.added + '</span>' + (b.result.failed ? ' <span class="badge danger">لم يُضف ' + b.result.failed + '</span>' : '') : b.status === 'cancelled' ? '<span class="badge muted">ملغى</span>' : '<span class="badge warning">بانتظار المراجعة</span>' %></td>
+<td class="small"><%= b.full_name %></td><td class="small"><%= new Date(b.created_at).toLocaleDateString('ar-EG') %></td><td><a class="btn sm sec" href="/poor/import/<%= b.id %>">فتح</a></td></tr><% }) %>
+</tbody></table></div>
+<% } %>
+<%- include('../partials/foot') %>

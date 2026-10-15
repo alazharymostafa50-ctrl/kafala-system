@@ -68,3 +68,27 @@ test('قسم الفقراء: كشف العطاء العيني ببيانات ا�
   assert.equal((await aud.get('/poor/cases')).status, 200);
   assert.equal((await aud.post('/poor/cases', { full_name: 'x', reason: 'widow', area: 'east', give_type: 'in_kind' })).status, 403);
 });
+
+test('قسم الفقراء: استيراد كشف من Excel مع فحص الرقم القومي والتكرار', async () => {
+  const ExcelJS = require('exceljs');
+  const mgr = await login('manager');
+  const wb = new ExcelJS.Workbook(); const ws = wb.addWorksheet('x');
+  ws.addRow(['م', 'اسم المستفيد', 'رقم التليفون', 'الرقم القومى']);
+  ws.addRow([1, 'مستورد أول', '01211112222', '28001011400011']);
+  ws.addRow([2, 'مستورد مكرر', '01211113333', '28001011400011']);
+  ws.addRow([3, 'مستورد رقم خطأ', '01211114444', '28013011400011']);
+  ws.addRow([4, 'مستورد هاتف ناقص', '012111155', '28102021400022']);
+  ws.addRow([5, 'مستورد بلا بيانات', '', '']);
+  const buf = Buffer.from(await wb.xlsx.writeBuffer());
+  const up = await mgr.upload('/poor/import', { area: 'east', give_type: 'in_kind', reason: 'low_income' }, { buffer: buf, name: 'east.xlsx' });
+  const bid = idFrom(up); assert.ok(bid, 'تم الرفع');
+  const pv = await mgr.get(`/poor/import/${bid}`);
+  assert.match(pv.text, /مكرر في الملف/); assert.match(pv.text, /تاريخ الميلاد داخل الرقم القومي غير صحيح/); assert.match(pv.text, /رقم الهاتف غير صحيح/);
+  await mgr.post(`/poor/import/${bid}/commit`);
+  const added = await db.many(`SELECT * FROM poor_cases WHERE full_name LIKE 'مستورد%' ORDER BY id`);
+  assert.equal(added.length, 3);
+  assert.ok(added.every((c) => c.area === 'east' && c.give_type === 'in_kind'));
+  assert.equal((await db.one('SELECT status FROM import_batches WHERE id=$1', [bid])).status, 'completed');
+  await mgr.post(`/poor/import/${bid}/commit`);
+  assert.equal((await db.one(`SELECT count(*)::int AS n FROM poor_cases WHERE full_name LIKE 'مستورد%'`)).n, 3, 'لا يتكرر الاستيراد');
+});

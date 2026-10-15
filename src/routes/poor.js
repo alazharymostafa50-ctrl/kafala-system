@@ -56,8 +56,8 @@ router.get('/poor', can('poor.view'), h(async (req, res) => {
 // ---------- الحالات ----------
 function parseCase(b) {
   const give = U.oneOf(b.give_type, GIVE, { label: 'نوع العطاء' });
-  const nid = (b.national_id || '').toString().replace(/[٠-٩]/g, (d) => '٠١٢٣٤٥٦٧٨٩'.indexOf(d)).replace(/\s/g, '');
-  if (nid && !/^\d{14}$/.test(nid)) throw new U.UserError('الرقم القومي يجب أن يتكون من 14 رقمًا');
+  const nid = U.normDigits(b.national_id);
+  if (nid && U.nationalIdError(nid)) throw new U.UserError(U.nationalIdError(nid));
   const reason = U.oneOf(b.reason, REASONS, { label: 'سبب الاستحقاق' });
   const c = {
     full_name: U.str(b.full_name, { required: true, max: 150, label: 'الاسم' }),
@@ -175,6 +175,157 @@ router.post('/poor/cases/:id(\\d+)/restore', can('poor.edit'), h(async (req, res
   await audit.log(req, 'restore', 'poor_case', id);
   flash(req, 'success', `تم استرجاع «${c.full_name}».`);
   res.redirect(`/poor/cases/${id}`);
+}));
+
+// ---------- استيراد الحالات من Excel ----------
+const imp = require('../lib/importer');
+const { memoryUpload } = require('../lib/uploads');
+const normH = (x) => String(x || '').replace(/[ً-ْـ]/g, '').replace(/[أإآ]/g, 'ا').replace(/ى/g, 'ي').replace(/ة/g, 'ه').replace(/[\s_:()\-]/g, '');
+const COLS = {
+  full_name: ['الاسم', 'اسم المستفيد', 'اسم الحالة', 'الاسم رباعي', 'اسم المستفيدة', 'الاسم بالكامل'],
+  national_id: ['الرقم القومي', 'رقم قومي', 'الرقم القومي للمستفيد', 'رقم البطاقه', 'الرقم القومي للحاله'],
+  phone: ['رقم التليفون', 'التليفون', 'الهاتف', 'رقم الهاتف', 'الموبايل', 'الجوال', 'رقم الجوال', 'رقم الموبايل', 'تليفون'],
+  family_size: ['عدد افراد الاسره', 'عدد الافراد', 'عدد افراد', 'افراد الاسره'],
+  area: ['المنطقه', 'الجهه', 'الناحيه'],
+  give_type: ['نوع العطاء', 'العطاء'],
+  reason: ['سبب الاستحقاق', 'السبب', 'الحاله الاجتماعيه'],
+  monthly_amount: ['المبلغ الشهري', 'المبلغ'],
+  notes: ['ملاحظات', 'ملاحظه'],
+};
+function mapHeaders(headers) {
+  const m = {};
+  headers.forEach((hd, i) => {
+    const n = normH(hd);
+    for (const [k, list] of Object.entries(COLS)) if (m[k] === undefined && list.some((x) => normH(x) === n)) m[k] = i;
+  });
+  return m;
+}
+const AREA_WORDS = [['شرق', 'east'], ['غرب', 'west'], ['شمال', 'north'], ['جنوب', 'south']];
+const REASON_WORDS = [['ارمل', 'widow'], ['مطلق', 'divorced'], ['مريض', 'sick'], ['مرض', 'sick'], ['مسن', 'elderly'], ['كبير', 'elderly'], ['همم', 'disabled'], ['اعاق', 'disabled'], ['معاق', 'disabled'], ['عاطل', 'unemployed'], ['بلا عمل', 'unemployed'], ['دخل', 'low_income']];
+function guessArea(v, def) { const n = normH(v); for (const [w, k] of AREA_WORDS) if (n.includes(w)) return k; return AREAS.includes(v) ? v : def; }
+function guessGive(v, def) { const n = normH(v); if (!n) return def; const c = n.includes('نقد'); const k = n.includes('عين'); return c && k ? 'both' : c ? 'cash' : k ? 'in_kind' : def; }
+function guessReason(v, def) { const n = normH(v); if (!n) return [def, null]; for (const [w, k] of REASON_WORDS) if (n.includes(normH(w))) return [k, null]; return ['other', String(v).trim().slice(0, 300)]; }
+
+/** فحص كل صفوف الملف: أخطاء تمنع الإضافة، وتحذيرات لا تمنعها */
+async function checkRows(batch) {
+  const { mapping: m, rows } = { mapping: batch.mapping.cols, rows: batch.rows };
+  const def = batch.mapping.defaults;
+  const existing = await db.many('SELECT national_id, case_no FROM poor_cases WHERE national_id IS NOT NULL AND deleted_at IS NULL');
+  const exist = new Map(existing.map((r) => [r.national_id, r.case_no]));
+  const guard = await db.many(`SELECT g.national_id, g.phone, f.file_no FROM guardians g JOIN families f ON f.id=g.family_id WHERE f.deleted_at IS NULL`);
+  const gid = new Map(guard.filter((g) => g.national_id).map((g) => [g.national_id, g.file_no]));
+  const gph = new Map(guard.filter((g) => g.phone).map((g) => [g.phone, g.file_no]));
+  const seenId = new Map(); const seenName = new Map();
+  const get = (r, k) => (m[k] === undefined ? '' : String(r[m[k]] ?? '').trim());
+  return rows.map((r, i) => {
+    const errors = []; const warnings = [];
+    const full_name = get(r, 'full_name').replace(/\s+/g, ' ');
+    if (!full_name) errors.push('الاسم فارغ');
+    const nid = U.normDigits(get(r, 'national_id'));
+    if (nid) {
+      const e = U.nationalIdError(nid);
+      if (e) errors.push(e);
+      else if (seenId.has(nid)) errors.push(`الرقم القومي مكرر في الملف (السطر ${seenId.get(nid)})`);
+      else if (exist.has(nid)) errors.push(`مسجل من قبل في النظام (${exist.get(nid)})`);
+      if (!seenId.has(nid)) seenId.set(nid, i + 1);
+      if (gid.has(nid)) warnings.push(`مسجل في قسم الأيتام (${gid.get(nid)})`);
+    } else warnings.push('بدون رقم قومي');
+    let phone = U.normDigits(get(r, 'phone'));
+    if (phone && phone.length === 10 && phone[0] === '1') phone = '0' + phone;
+    if (!phone) warnings.push('بدون رقم هاتف');
+    else if (!/^01[0125]\d{8}$/.test(phone)) { warnings.push(`رقم الهاتف غير صحيح (${phone.length} أرقام)`); if (phone.length < 7 || phone.length > 15) phone = ''; }
+    if (phone && gph.has(phone)) warnings.push(`الهاتف مسجل في قسم الأيتام (${gph.get(phone)})`);
+    const nn = normH(full_name);
+    if (nn && seenName.has(nn) && !nid) warnings.push(`الاسم مكرر في الملف (السطر ${seenName.get(nn)})`);
+    if (nn && !seenName.has(nn)) seenName.set(nn, i + 1);
+    const area = guessArea(get(r, 'area'), def.area);
+    const give_type = guessGive(get(r, 'give_type'), def.give_type);
+    const [reason, reason_note] = guessReason(get(r, 'reason'), def.reason);
+    let monthly_amount = '0.00';
+    if (give_type !== 'in_kind') {
+      try { monthly_amount = U.amount(get(r, 'monthly_amount') || def.monthly_amount || '0'); } catch (e) { errors.push('المبلغ الشهري مطلوب لأن نوع العطاء نقدي'); }
+    }
+    const fs = parseInt(U.normDigits(get(r, 'family_size')), 10);
+    return { line: i + 1, errors, warnings, values: { full_name, national_id: nid && !U.nationalIdError(nid) ? nid : null, phone: phone || null, area, give_type, reason, reason_note, monthly_amount,
+      family_size: fs >= 1 && fs <= 30 ? fs : null, notes: get(r, 'notes') || null } };
+  });
+}
+
+router.get('/poor/import', can('poor.edit'), h(async (req, res) => {
+  const batches = await db.many(`SELECT b.id, b.file_name, b.status, b.created_at, b.result, jsonb_array_length(b.rows) AS n, u.full_name
+    FROM import_batches b LEFT JOIN users u ON u.id=b.created_by WHERE b.import_type='poor_cases' ORDER BY b.id DESC LIMIT 20`);
+  res.render('poor/import', { title: 'استيراد حالات من Excel', batches });
+}));
+
+router.get('/poor/import/template.xlsx', can('poor.edit'), h(async (req, res) => {
+  const ExcelJS = require('exceljs');
+  const wb = new ExcelJS.Workbook(); const ws = wb.addWorksheet('الحالات', { views: [{ rightToLeft: true }] });
+  ws.columns = ['الاسم', 'الرقم القومي', 'رقم الهاتف', 'عدد أفراد الأسرة', 'المنطقة', 'نوع العطاء', 'سبب الاستحقاق', 'المبلغ الشهري', 'ملاحظات'].map((x) => ({ header: x, width: x === 'الاسم' ? 32 : 18 }));
+  ws.getRow(1).font = { bold: true };
+  ws.getColumn(2).numFmt = '@'; ws.getColumn(3).numFmt = '@';
+  ws.addRow(['مثال: فاطمة محمد علي حسن', '28001011400000', '01000000000', 4, 'شرق القرية', 'عيني', 'أرملة', '', 'احذف هذا السطر']);
+  const buf = await wb.xlsx.writeBuffer();
+  res.set('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet').set('Content-Disposition', 'attachment; filename="poor-template.xlsx"').send(Buffer.from(buf));
+}));
+
+router.post('/poor/import', can('poor.edit'), memoryUpload(10).single('file'), h(async (req, res) => {
+  if (!req.file) throw new U.UserError('اختر ملفًا');
+  const { headers, rows } = await imp.parseFile(req.file);
+  const cols = mapHeaders(headers);
+  if (cols.full_name === undefined) throw new U.UserError('لم أجد عمود «الاسم» في الملف. تأكد أن أول صف فيه عناوين الأعمدة.');
+  const defaults = {
+    area: U.oneOf(req.body.area, AREAS, { label: 'المنطقة' }),
+    give_type: U.oneOf(req.body.give_type, GIVE, { def: 'in_kind' }),
+    reason: U.oneOf(req.body.reason, REASONS, { def: 'low_income' }),
+    monthly_amount: req.body.monthly_amount || '0',
+  };
+  const b = await db.one(`INSERT INTO import_batches (import_type, file_name, headers, rows, mapping, created_by) VALUES ('poor_cases',$1,$2,$3,$4,$5) RETURNING id`,
+    [String(req.file.originalname).slice(0, 200), JSON.stringify(headers), JSON.stringify(rows), JSON.stringify({ cols, defaults }), req.user.id]);
+  await audit.log(req, 'import_uploaded', 'import_batch', b.id, { after: { type: 'poor_cases', rows: rows.length } });
+  res.redirect(`/poor/import/${b.id}`);
+}));
+
+const loadBatch = async (id) => {
+  const b = await db.one(`SELECT * FROM import_batches WHERE id=$1 AND import_type='poor_cases'`, [id]);
+  if (!b) throw new U.UserError('الدفعة غير موجودة', 404);
+  return b;
+};
+
+router.get('/poor/import/:id(\\d+)', can('poor.edit'), h(async (req, res) => {
+  const b = await loadBatch(U.intId(req.params.id));
+  const checked = b.status === 'uploaded' ? await checkRows(b) : [];
+  const labels = Object.fromEntries(Object.entries(b.mapping.cols).map(([k, i]) => [k, b.headers[i]]));
+  res.render('poor/import-preview', { title: 'مراجعة ملف الاستيراد', b, checked, labels });
+}));
+
+router.post('/poor/import/:id(\\d+)/commit', can('poor.edit'), h(async (req, res) => {
+  const id = U.intId(req.params.id);
+  const result = await db.tx(async (c) => {
+    const b = await c.one(`SELECT * FROM import_batches WHERE id=$1 AND import_type='poor_cases' FOR UPDATE`, [id]);
+    if (!b || b.status !== 'uploaded') throw new U.UserError('هذه الدفعة استُوردت أو أُلغيت من قبل');
+    const checked = await checkRows(b);
+    let added = 0; const failed = [];
+    for (const r of checked) {
+      if (r.errors.length) { failed.push({ line: r.line, name: r.values.full_name, errors: r.errors }); continue; }
+      const v = r.values;
+      await c.query(`INSERT INTO poor_cases (full_name, national_id, phone, reason, reason_note, area, give_type, monthly_amount, family_size, notes, created_by)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`, [v.full_name, v.national_id, v.phone, v.reason, v.reason_note, v.area, v.give_type, v.monthly_amount, v.family_size, v.notes, req.user.id]);
+      added++;
+    }
+    const result = { added, failed: failed.length, failed_rows: failed, warnings: checked.filter((r) => !r.errors.length && r.warnings.length).length };
+    await c.query(`UPDATE import_batches SET status='completed', result=$2, completed_at=now() WHERE id=$1`, [id, JSON.stringify(result)]);
+    await audit.log(req, 'import_completed', 'import_batch', id, { after: { added, failed: failed.length } }, c);
+    return result;
+  });
+  flash(req, result.failed ? 'warning' : 'success', `تم استيراد ${result.added} حالة.` + (result.failed ? ` لم تُستورد ${result.failed} حالة بسبب أخطاء (القائمة أدناه)؛ صحّحها وأضفها يدويًا أو في ملف جديد.` : ''));
+  res.redirect(`/poor/import/${id}`);
+}));
+
+router.post('/poor/import/:id(\\d+)/cancel', can('poor.edit'), h(async (req, res) => {
+  const id = U.intId(req.params.id);
+  await db.query(`UPDATE import_batches SET status='cancelled' WHERE id=$1 AND import_type='poor_cases' AND status='uploaded'`, [id]);
+  flash(req, 'success', 'تم إلغاء الاستيراد.');
+  res.redirect('/poor/import');
 }));
 
 // ---------- الصرف النقدي الشهري ----------

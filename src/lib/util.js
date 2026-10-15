@@ -110,7 +110,26 @@ function amount(v, { label = 'المبلغ', allowZero = false } = {}) {
   return fromCents(c);
 }
 
-module.exports = {
+/**
+ * التحقق من الرقم القومي المصري: 14 رقمًا، أول رقم 2 أو 3 (القرن)، ثم تاريخ ميلاد صحيح، ثم كود محافظة صحيح.
+ * يعيد رسالة الخطأ أو null إذا كان صحيحًا.
+ */
+const GOV_CODES = new Set(['01', '02', '03', '04', '11', '12', '13', '14', '15', '16', '17', '18', '19', '21', '22', '23', '24', '25', '26', '27', '28', '29', '31', '32', '33', '34', '35', '88']);
+function nationalIdError(v) {
+  const s = String(v || '');
+  if (!/^\d+$/.test(s)) return 'الرقم القومي يجب أن يحتوي على أرقام فقط';
+  if (s.length !== 14) return `الرقم القومي ${s.length} رقمًا والمطلوب 14`;
+  if (s[0] !== '2' && s[0] !== '3') return 'الرقم القومي يجب أن يبدأ بـ 2 أو 3';
+  const y = (s[0] === '2' ? 1900 : 2000) + Number(s.slice(1, 3)); const m = Number(s.slice(3, 5)); const d = Number(s.slice(5, 7));
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  if (m < 1 || m > 12 || dt.getUTCFullYear() !== y || dt.getUTCMonth() !== m - 1 || dt.getUTCDate() !== d) return 'تاريخ الميلاد داخل الرقم القومي غير صحيح';
+  if (dt > new Date()) return 'تاريخ الميلاد داخل الرقم القومي في المستقبل';
+  if (!GOV_CODES.has(s.slice(7, 9))) return 'كود المحافظة داخل الرقم القومي غير صحيح';
+  return null;
+}
+const normDigits = (v) => String(v ?? '').replace(/[٠-٩]/g, (d) => '٠١٢٣٤٥٦٧٨٩'.indexOf(d)).replace(/[۰-۹]/g, (d) => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d)).replace(/[^0-9]/g, '');
+
+module.exports = { nationalIdError, normDigits,
   toCents, fromCents, fmtMoney, UserError, todayISO, currentPeriod, ageOn, dateAtAge, addDays, addMonths,
   periodStart, periodEnd, validPeriod, prevPeriod, validDate, periodLabel, MONTHS_AR, str, phone, date, oneOf, intId, amount,
 };
