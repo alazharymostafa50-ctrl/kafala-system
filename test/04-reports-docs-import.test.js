@@ -189,3 +189,18 @@ test('الاستيراد: معاينة، اكتشاف التكرار والأخ�
   const tpl = await admin.get('/import/template/sponsors.xlsx').buffer(true).parse(binary);
   assert.equal(tpl.status, 200);
 });
+
+test('تنزيل نسخة احتياطية Excel من داخل المنصة (للمدير فقط وبدون كلمات المرور)', async () => {
+  const { login } = require('./helpers');
+  const ExcelJS = require('exceljs');
+  const admin = await login('admin');
+  const r = await admin.get('/admin/backup.xlsx').buffer(true).parse((res, cb) => { const b = []; res.on('data', (c) => b.push(c)); res.on('end', () => cb(null, Buffer.concat(b))); });
+  assert.equal(r.status, 200);
+  const wb = new ExcelJS.Workbook(); await wb.xlsx.load(r.body);
+  const names = wb.worksheets.map((w) => w.name);
+  assert.ok(names.includes('families')); assert.ok(names.includes('users')); assert.ok(!names.includes('user_sessions'));
+  const hdr = wb.getWorksheet('users').getRow(1).values.join(',');
+  assert.ok(!/password_hash|totp_secret/.test(hdr));
+  const social = await login('social');
+  assert.equal((await social.get('/admin/backup.xlsx')).status, 403);
+});

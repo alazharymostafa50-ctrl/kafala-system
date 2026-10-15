@@ -134,6 +134,15 @@ router.get('/admin/settings', can('settings.manage'), h(async (req, res) => {
 }));
 
 const logoUpload = memoryUpload(2).single('logo');
+// تنزيل نسخة احتياطية من البيانات (Excel) — لمدير النظام
+router.get('/admin/backup.xlsx', can('settings.manage'), h(async (req, res) => {
+  const buf = await require('../lib/databackup').buildWorkbook(res.locals.org);
+  await audit.log(req, 'backup_download', 'system', '', { after: { bytes: buf.byteLength } });
+  const stamp = new Date().toISOString().slice(0, 10);
+  res.set('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    .set('Content-Disposition', `attachment; filename="kafala-backup-${stamp}.xlsx"`).set('Cache-Control', 'no-store').send(Buffer.from(buf));
+}));
+
 router.post('/admin/settings/org', can('settings.manage'), logoUpload, h(async (req, res) => {
   const cur = await settings.get('org');
   const org = {

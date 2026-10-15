@@ -1,6 +1,10 @@
 <%- include('../partials/head', { title }) %>
 <% const o = s.org || {}, e = s.eligibility || {}, f = s.finance || {}, d = s.documents || {}; %>
 <div class="pagehead"><div><h1>إعدادات النظام</h1><p>كل التغييرات تُسجل في سجل التدقيق، ولا تعدّل الكشوف والتقارير السابقة.</p></div></div>
+<div class="card" style="border-inline-start:4px solid var(--gold, #b8963e)"><h2>النسخة الاحتياطية</h2>
+<p>نزّل نسخة من كل بيانات النظام (الأسر، المستفيدين، الكفالات، الصرف، التبرعات، المصروفات، الكشوف...) في ملف Excel واحد، واحفظه على جهاز الجمعية أو Google Drive. <b>يُنصح بتنزيلها مرة كل شهر على الأقل.</b></p>
+<a class="btn gold" href="/admin/backup.xlsx"><%- icon('doc') %> تنزيل نسخة احتياطية الآن</a>
+<p class="small muted" style="margin:.5rem 0 0">الملف لا يحتوي على صور المستندات المرفوعة ولا كلمات المرور.</p></div>
 <div class="card"><h2>بيانات الجمعية والهوية</h2>
 <form method="post" action="/admin/settings/org?_csrf=<%= csrf %>" enctype="multipart/form-data">
 <div class="fields">

@@ -16,6 +16,7 @@
   <% if (can('expenses.edit')) { %><a class="tile" href="/expenses/new"><%- icon('expense') %>تسجيل مصروف</a><% } %>
   <% if (can('sponsors.edit')) { %><a class="tile" href="/sponsors/new"><%- icon('sponsor') %>إضافة كفيل</a><% } %>
   <% if (can('reports.view')) { %><a class="tile" href="/reports?period=<%= period %>&type=financial&go=1"><%- icon('report') %>التقرير الشهري<small>طباعة وتصدير</small></a><% } %>
+  <% if (can('settings.manage')) { %><a class="tile" href="/admin/backup.xlsx"><%- icon('doc') %>تنزيل نسخة احتياطية<small>كل البيانات في ملف Excel</small></a><% } %>
 </div>
 
 <% if (can('entitlements.view')) { %>
