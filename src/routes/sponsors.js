@@ -45,6 +45,7 @@ router.get('/sponsors', can('sponsors.view'), h(async (req, res) => {
   const q = (req.query.q || '').trim();
   if (q) { const like = '%' + q.replace(/[%_\\]/g, '\\$&') + '%'; w.add('(s.full_name ILIKE ? OR s.sponsor_no ILIKE ? OR s.phone LIKE ?)', like, like, like); }
   if (STATUSES.includes(req.query.status)) w.add('s.status = ?', req.query.status);
+  w.add('s.deleted_at IS NULL');
   const base = `SELECT s.*, (SELECT count(*) FROM family_sponsorships fs WHERE fs.sponsor_id=s.id AND fs.status='active')::int AS families_n,
      (SELECT COALESCE(SUM(monthly_amount),0) FROM family_sponsorships fs WHERE fs.sponsor_id=s.id AND fs.status='active')::text AS linked_amount
      FROM sponsors s ${w.sql}`;

@@ -2,8 +2,11 @@
 <div class="pagehead">
   <div><div class="crumbs"><a href="/sponsors">الكفلاء</a> / <%= s.sponsor_no %></div><h1><%= s.full_name %> <%- badge('sponsorStatus', s.status) %></h1>
   <p>الجوال: <span class="ltr"><%= s.phone %></span><%= s.phone_alt ? ' / ' + s.phone_alt : '' %> · <%= L.label('sponsorType', s.sponsorship_type) %> · التعهد الشهري <b class="num"><%= fmt(s.monthly_pledge) %></b> <%= cur %> · منذ <%= s.start_date || '—' %></p></div>
-  <% if (can('sponsors.edit')) { %><a class="btn sec" href="/sponsors/<%= s.id %>/edit"><%- icon('edit') %> تعديل</a><% } %>
+  <div class="btns"><% if (can('sponsors.edit')) { %><a class="btn sec" href="/sponsors/<%= s.id %>/edit"><%- icon('edit') %> تعديل</a>
+  <% if (!s.deleted_at) { %><form method="post" action="/sponsors/<%= s.id %>/delete" class="inline" data-confirm="هل أنت متأكد من حذف الكفيل «<%= esc(s.full_name) %>»؟ هيتنقل لسلة المحذوفات وتقدر ترجعه في أي وقت. تبرعاته القديمة هتفضل محفوظة في الحسابات."><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn danger"><%- icon('trash') %> حذف الكفيل</button></form><% } %><% } %></div>
 </div>
+<% if (s.deleted_at) { %><div class="alert warning">الكفيل ده في <a href="/trash">سلة المحذوفات</a>.
+<% if (can('sponsors.edit')) { %><form method="post" action="/sponsors/<%= s.id %>/restore" class="inline"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn sm"><%- icon('restore') %> استرجاع</button></form><% } %></div><% } %>
 <% if (s.notes) { %><div class="alert info"><%= s.notes %></div><% } %>
 
 <div class="card"><div class="cardhead"><h2>الأسر المرتبطة</h2></div>

@@ -145,3 +145,36 @@ test('الأسماء مرتبة أبجديًا (مع توحيد الهمزات) 
   const k = await db.one(`SELECT ar_key('أحمد') = ar_key('احمد') AS same`);
   assert.equal(k.same, true);
 });
+
+test('الحذف بتأكيد وسلة المحذوفات والاسترجاع (أسرة، فرد، كفيل)', async () => {
+  const { login, db } = require('./helpers');
+  const F = require('./fixtures');
+  const mgr = await login('manager');
+  const fam = await F.family(mgr, { g_full_name: 'ولي للحذف تجربة' });
+  const m = await F.member(mgr, fam, { full_name: 'فرد للحذف تجربة' });
+  let show = await mgr.get(`/families/${fam}`);
+  assert.match(show.text, /data-confirm="هل أنت متأكد من حذف/);
+  // حذف فرد
+  await mgr.post(`/members/${m.id}/delete`);
+  show = await mgr.get(`/families/${fam}`);
+  assert.ok(!show.text.includes(`id="m${m.id}"`), 'صف الفرد اختفى');
+  assert.equal((await db.one('SELECT count(*)::int AS n FROM family_members WHERE id=$1', [m.id])).n, 0);
+  // حذف الأسرة
+  const before = (await db.one('SELECT status FROM families WHERE id=$1', [fam])).status;
+  await mgr.post(`/families/${fam}/delete`);
+  await mgr.get('/'); // استهلاك رسالة التنبيه
+  let list = await mgr.get('/families?status=all&q=' + encodeURIComponent('ولي للحذف'));
+  assert.doesNotMatch(list.text, /ولي للحذف تجربة/);
+  const trash = await mgr.get('/trash');
+  assert.match(trash.text, /ولي للحذف تجربة/); assert.match(trash.text, /فرد للحذف تجربة/);
+  // الاسترجاع
+  await mgr.post(`/families/${fam}/restore`);
+  await mgr.post(`/members/${m.id}/restore`);
+  assert.equal((await db.one('SELECT status, deleted_at FROM families WHERE id=$1', [fam])).status, before);
+  list = await mgr.get('/families?q=' + encodeURIComponent('ولي للحذف'));
+  assert.match(list.text, /ولي للحذف تجربة/);
+  assert.ok((await mgr.get(`/families/${fam}`)).text.includes(`id="m${m.id}"`), 'الفرد رجع');
+  // الباحث الاجتماعي لا يحذف
+  const social = await login('social');
+  assert.equal((await social.post(`/families/${fam}/delete`)).status, 403);
+});

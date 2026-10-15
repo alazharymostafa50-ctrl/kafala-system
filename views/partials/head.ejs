@@ -28,6 +28,7 @@
     <%- nav('/expenses', 'expense', 'المصروفات', 'expenses.view') %>
     <%- nav('/entitlements', 'calendar', 'الصرف الشهري', 'entitlements.view') %>
     <% if (can('reports.export')) { %><%- nav('/statements', 'doc', 'أرشيف الكشوف', 'entitlements.view') %><% } %>
+    <% if (can('families.archive') || can('sponsors.edit')) { %><%- nav('/trash', 'trash', 'سلة المحذوفات') %><% } %>
     <%- nav('/finance', 'wallet', 'الأرصدة', 'finance.view') %>
     <%- nav('/reports', 'report', 'التقارير والطباعة', 'reports.view') %>
     <div class="grp">النظام</div>
